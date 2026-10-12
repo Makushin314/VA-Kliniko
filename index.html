@@ -1,0 +1,2528 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VA Kliniko — Diagnozo kaj Simptomoj</title>
+<meta name="description" content="Внутренний клинический модуль клуба Vulpeto Abeleto. Расшифровка анализов и генератор вымышленных синдромов.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter+Tight:ital,wght@0,300;0,400;0,500;0,600;0,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+/* ==================== RESET ==================== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --white: #ffffff;
+  --paper: #f4f4f0;
+  --ink: #0a0a0a;
+  --ink-2: #1a1a1a;
+  --gray: #6b6b6b;
+  --gray-2: #9a9a9a;
+  --line: rgba(10, 10, 10, 0.12);
+  --line-2: rgba(10, 10, 10, 0.28);
+  --green: #009900;
+  --green-hot: #00c853;
+  --green-dark: #053a05;
+  --green-pale: #e6f7e6;
+  --violet: #6b4fa8;
+  --violet-hot: #9b7ee0;
+  --violet-pale: #eee8f8;
+  --red: #c0392b;
+  --amber: #b8860b;
+  --r-xs: 6px; --r-sm: 12px; --r-md: 20px; --r-lg: 32px;
+  --ease: cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: 'Inter Tight', system-ui, -apple-system, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  line-height: 1.5;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: "";
+  position: fixed; inset: 0; pointer-events: none; z-index: 9998;
+  opacity: 0.4; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='1'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+img, svg { display: block; max-width: 100%; }
+::selection { background: var(--green); color: var(--white); }
+
+.mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem; text-transform: uppercase;
+  letter-spacing: 0.12em; font-weight: 500;
+}
+h1, h2, h3, h4 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 0.92;
+  text-transform: uppercase;
+}
+.star { display: inline-block; flex-shrink: 0; }
+.star circle { fill: currentColor; }
+.star path { fill: var(--paper); }
+
+/* ==================== SPLASH ==================== */
+.splash {
+  position: fixed; inset: 0; z-index: 10000;
+  background: var(--ink); color: var(--paper);
+  display: grid; place-items: center;
+  transition: opacity 0.6s var(--ease), visibility 0.6s;
+}
+.splash.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+.splash-inner { text-align: center; }
+.splash h1 {
+  font-family: 'Space Grotesk'; font-weight: 700;
+  font-size: clamp(2rem, 7vw, 5.5rem);
+  line-height: 0.85; letter-spacing: -0.05em;
+  color: var(--paper);
+}
+.splash h1 em { font-style: normal; color: var(--green-hot); }
+.splash-sub {
+  font-family: 'JetBrains Mono'; font-size: 0.68rem;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: rgba(244,244,240,0.5); margin-top: 1.2rem;
+}
+.splash-bar { width: 0; height: 2px; background: var(--green); margin: 2rem auto 0; animation: loadBar 1.1s var(--ease) forwards; }
+@keyframes loadBar { to { width: 160px; } }
+
+/* ==================== PROGRESS ==================== */
+.progress { position: fixed; top: 0; left: 0; right: 0; height: 2px; z-index: 1001; }
+.progress span { display: block; height: 100%; width: 0; background: var(--green); transition: width 0.1s linear; }
+
+/* ==================== NAV ==================== */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  padding: 1rem clamp(1rem, 3vw, 2rem);
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  background: var(--paper); border-bottom: 1px solid var(--line);
+}
+.nav-brand {
+  display: flex; align-items: center; gap: 0.65rem;
+  font-family: 'Space Grotesk'; font-weight: 700; font-size: 1rem;
+  text-transform: uppercase; letter-spacing: -0.02em;
+  cursor: pointer; user-select: none;
+}
+.nav-brand .star { width: 22px; height: 22px; color: var(--green); animation: spin 20s linear infinite; }
+.nav-brand .star circle { fill: var(--green); }
+.nav-brand .star path { fill: var(--paper); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.nav-menu { display: flex; gap: 0.15rem; align-items: center; }
+.nav-menu a {
+  font-family: 'Space Grotesk'; font-size: 0.78rem; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.02em;
+  padding: 0.5rem 0.8rem; border-radius: var(--r-xs);
+  transition: background 0.25s var(--ease);
+}
+.nav-menu a:hover { background: var(--green-pale); color: var(--green-dark); }
+
+.nav-end { display: flex; align-items: center; gap: 0.6rem; }
+.nav-lang {
+  font-family: 'JetBrains Mono'; font-size: 0.68rem;
+  letter-spacing: 0.1em; color: var(--gray);
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--line); border-radius: var(--r-xs);
+}
+.nav-lang strong { color: var(--ink); }
+.nav-cta {
+  font-family: 'Space Grotesk'; font-weight: 600; font-size: 0.78rem;
+  text-transform: uppercase; letter-spacing: 0.02em;
+  padding: 0.65rem 1.1rem;
+  background: var(--ink); color: var(--paper);
+  border-radius: var(--r-xs);
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  transition: all 0.3s var(--ease);
+}
+.nav-cta:hover { background: var(--green); }
+.nav-cta svg { width: 12px; height: 12px; }
+.burger { display: none; flex-direction: column; gap: 4px; padding: 8px; }
+.burger span { width: 20px; height: 2px; background: var(--ink); border-radius: 2px; }
+
+.mobile-menu {
+  position: fixed; inset: 0; z-index: 999;
+  background: var(--ink); color: var(--paper);
+  padding: 7rem 2rem 3rem;
+  display: flex; flex-direction: column; gap: 0.5rem;
+  transform: translateX(100%); transition: transform 0.5s var(--ease);
+  overflow-y: auto;
+}
+.mobile-menu.open { transform: translateX(0); }
+.mobile-menu a {
+  font-family: 'Space Grotesk'; font-weight: 700;
+  font-size: clamp(1.6rem, 7vw, 2.8rem);
+  text-transform: uppercase; letter-spacing: -0.03em; line-height: 1;
+  padding: 0.8rem 0; border-bottom: 1px solid rgba(244,244,240,0.15);
+  transition: color 0.3s var(--ease), padding-left 0.3s var(--ease);
+}
+.mobile-menu a:hover { color: var(--green-hot); padding-left: 1rem; }
+.mobile-close {
+  position: absolute; top: 1.4rem; right: 1.4rem;
+  width: 44px; height: 44px;
+  border: 1px solid rgba(244,244,240,0.25); border-radius: 50%;
+  display: grid; place-items: center; font-size: 1.2rem; color: var(--paper);
+}
+
+/* ==================== HERO ==================== */
+.hero {
+  padding: 8rem clamp(1rem, 3vw, 2rem) 2rem;
+  min-height: 92vh;
+  display: flex; flex-direction: column; justify-content: space-between;
+  position: relative; background: var(--paper);
+}
+.hero-top {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 2rem; margin-bottom: 3rem; padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+.hero-meta { display: flex; gap: 2rem; flex-wrap: wrap; }
+.hero-meta-item { display: flex; flex-direction: column; gap: 0.2rem; }
+.hero-meta-item .lbl {
+  font-family: 'JetBrains Mono'; font-size: 0.65rem;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--gray);
+}
+.hero-meta-item .val {
+  font-family: 'Space Grotesk'; font-weight: 500; font-size: 0.85rem;
+  text-transform: uppercase; letter-spacing: 0.01em;
+}
+.hero-tag {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  font-family: 'JetBrains Mono'; font-size: 0.7rem;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--green-dark);
+  padding: 0.5rem 0.9rem 0.5rem 0.7rem;
+  background: var(--green-pale); border-radius: 100px;
+}
+.hero-tag::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(0,153,0,0.2);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+.hero-title { display: flex; flex-direction: column; margin-bottom: 2rem; }
+.hero-title .row { display: flex; align-items: center; gap: 1rem; overflow: hidden; }
+.hero-title .row .word {
+  font-family: 'Space Grotesk'; font-weight: 700;
+  font-size: clamp(3rem, 15vw, 15rem);
+  line-height: 0.82; letter-spacing: -0.055em;
+  text-transform: uppercase; display: inline-block;
+  transform: translateY(102%);
+  animation: rise 1.1s var(--ease) forwards;
+}
+.hero-title .row:nth-child(1) .word { animation-delay: 1.4s; }
+.hero-title .row:nth-child(2) .word { animation-delay: 1.55s; color: var(--green); }
+.hero-title .row:nth-child(3) .word { animation-delay: 1.7s; }
+@keyframes rise { to { transform: translateY(0); } }
+.hero-title .row.indent { padding-left: 10vw; }
+.hero-title .row.center { justify-content: center; }
+.hero-title .orn {
+  font-family: 'Space Grotesk'; font-size: clamp(2rem, 6vw, 5rem);
+  color: var(--green); line-height: 0.82;
+  animation: rotateIn 1.4s var(--ease) 1.9s both;
+}
+@keyframes rotateIn {
+  from { opacity: 0; transform: rotate(-180deg) scale(0); }
+  to { opacity: 1; transform: rotate(0) scale(1); }
+}
+
+.hero-bottom {
+  display: grid; grid-template-columns: 1.2fr 1fr;
+  gap: 3rem; align-items: end;
+  padding-top: 2rem; border-top: 1px solid var(--line); margin-top: 3rem;
+}
+.hero-sub {
+  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  line-height: 1.55; max-width: 580px; color: var(--ink-2);
+}
+.hero-sub strong { font-weight: 500; color: var(--green); }
+.hero-actions { display: flex; gap: 0.7rem; flex-wrap: wrap; justify-content: flex-end; }
+
+.btn {
+  font-family: 'Space Grotesk'; font-weight: 600; font-size: 0.85rem;
+  text-transform: uppercase; letter-spacing: 0.02em;
+  padding: 1.05rem 1.6rem; border-radius: var(--r-xs);
+  display: inline-flex; align-items: center; gap: 0.6rem;
+  transition: all 0.35s var(--ease); cursor: pointer;
+  border: 1px solid transparent;
+}
+.btn-primary { background: var(--green); color: var(--white); }
+.btn-primary:hover { background: var(--ink); transform: translateY(-2px); }
+.btn-outline { border-color: var(--ink); color: var(--ink); }
+.btn-outline:hover { background: var(--ink); color: var(--paper); transform: translateY(-2px); }
+.btn-ghost { border-color: var(--line-2); color: var(--gray); }
+.btn-ghost:hover { border-color: var(--ink); color: var(--ink); }
+.btn svg { width: 14px; height: 14px; transition: transform 0.3s var(--ease); }
+.btn:hover svg { transform: translateX(4px); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none !important; }
+
+/* ==================== MARQUEE ==================== */
+.marquee { background: var(--ink); color: var(--paper); padding: 1.4rem 0; overflow: hidden; }
+.marquee-track {
+  display: flex; gap: 2.5rem; white-space: nowrap;
+  animation: slide 40s linear infinite; width: max-content;
+}
+.marquee-item {
+  font-family: 'Space Grotesk'; font-weight: 700;
+  font-size: clamp(1.3rem, 2.6vw, 2.1rem);
+  text-transform: uppercase; letter-spacing: -0.02em;
+  display: flex; align-items: center; gap: 2.5rem; line-height: 1;
+}
+.marquee-item em { font-style: normal; color: var(--green-hot); font-weight: 500; }
+.marquee-item .star { width: 24px; height: 24px; color: var(--green-hot); }
+.marquee-item .star circle { fill: var(--green-hot); }
+.marquee-item .star path { fill: var(--ink); }
+@keyframes slide { to { transform: translateX(-50%); } }
+
+/* ==================== SECTION ==================== */
+.section { padding: clamp(4rem, 8vw, 7rem) clamp(1rem, 3vw, 2rem); position: relative; }
+.container { max-width: 1440px; margin: 0 auto; }
+.section-head {
+  display: grid; grid-template-columns: 240px 1fr;
+  gap: 3rem; align-items: start;
+  margin-bottom: 3.5rem; padding-bottom: 2rem;
+  border-bottom: 1px solid var(--line);
+}
+.section-label { display: flex; flex-direction: column; gap: 0.6rem; }
+.section-label .num {
+  font-family: 'Space Grotesk'; font-weight: 700;
+  font-size: 2.4rem; letter-spacing: -0.03em;
+  color: var(--green); line-height: 1; cursor: pointer;
+  user-select: none; transition: color 0.3s var(--ease);
+}
+.section-label .num:hover { color: var(--ink); }
+.section-label .title {
+  font-family: 'JetBrains Mono'; font-size: 0.72rem;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--gray);
+}
+.section-head-content h2 {
+  font-size: clamp(2rem, 5.5vw, 4.2rem);
+  line-height: 0.95; letter-spacing: -0.04em;
+}
+.section-head-content h2 em { font-style: normal; color: var(--green); }
+.section-head-content .head-desc {
+  margin-top: 1.25rem; max-width: 640px;
+  color: var(--gray); font-size: 1rem; line-height: 1.6;
+}
+
+/* ==================== MODE SWITCH ==================== */
+.mode-switch {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 1rem; margin-bottom: 2.5rem;
+}
+.mode-btn {
+  text-align: left; padding: 1.5rem 1.75rem;
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  background: var(--white);
+  display: flex; flex-direction: column; gap: 0.4rem;
+  transition: all 0.4s var(--ease); position: relative; overflow: hidden;
+}
+.mode-btn::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0;
+  height: 3px; background: var(--green);
+  transform: scaleX(0); transform-origin: left;
+  transition: transform 0.5s var(--ease);
+}
+.mode-btn:hover { border-color: var(--line-2); transform: translateY(-2px); }
+.mode-btn.active { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+.mode-btn.active::after { transform: scaleX(1); }
+.mode-btn .mb-idx {
+  font-family: 'JetBrains Mono'; font-size: 0.64rem;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gray);
+}
+.mode-btn.active .mb-idx { color: var(--green-hot); }
+.mode-btn .mb-name {
+  font-family: 'Space Grotesk'; font-weight: 700;
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  text-transform: uppercase; letter-spacing: -0.025em;
+  line-height: 1;
+}
+.mode-btn .mb-desc {
+  font-size: 0.86rem; line-height: 1.5;
+  color: var(--gray);
+}
+.mode-btn.active .mb-desc { color: rgba(244,244,240,0.65); }
+
+/* ==================== TOOL ==================== */
+.tool-section { background: var(--paper); }
+.mode-panel { display: none; }
+.mode-panel.active { display: block; animation: fadeIn 0.5s var(--ease); }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+.tool-grid {
+  display: grid; grid-template-columns: 1.55fr 1fr;
+  gap: 2.5rem; align-items: start;
+}
+
+.picker-top { display: flex; gap: 0.8rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.search-wrap { flex: 1; min-width: 240px; position: relative; }
+.search-wrap svg {
+  position: absolute; left: 1rem; top: 50%; transform: translateY(-50%);
+  width: 15px; height: 15px; color: var(--gray-2); pointer-events: none;
+}
+.search {
+  width: 100%; font-family: 'Inter Tight'; font-size: 0.95rem;
+  padding: 0.95rem 1rem 0.95rem 2.6rem;
+  border: 1px solid var(--line-2); border-radius: var(--r-sm);
+  background: var(--white); color: var(--ink);
+  transition: all 0.3s var(--ease);
+}
+.search:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(0,153,0,0.15); }
+.search::placeholder { color: var(--gray-2); }
+.picker-actions { display: flex; gap: 0.6rem; }
+.picker-actions .btn { padding: 0.95rem 1.15rem; font-size: 0.76rem; }
+
+.cat-group { margin-bottom: 1.8rem; }
+.cat-head {
+  display: flex; align-items: center; gap: 0.7rem;
+  margin-bottom: 0.8rem; padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--line);
+}
+.cat-head .cat-name {
+  font-family: 'Space Grotesk'; font-weight: 600; font-size: 0.92rem;
+  text-transform: uppercase; letter-spacing: -0.005em;
+}
+.cat-head .cat-count {
+  font-family: 'JetBrains Mono'; font-size: 0.64rem;
+  letter-spacing: 0.1em; color: var(--gray-2);
+  padding: 0.15rem 0.5rem; border: 1px solid var(--line);
+  border-radius: 100px;
+}
+
+.diag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+
+/* ---- Индикатор (анализ) ---- */
+.ind {
+  padding: 1rem 1.1rem;
+  background: var(--white); border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  transition: all 0.3s var(--ease);
+  display: flex; flex-direction: column; gap: 0.7rem;
+}
+.ind:hover { border-color: var(--line-2); }
+.ind.selected { background: var(--green-pale); border-color: var(--green); }
+.ind-top { display: flex; flex-direction: column; gap: 0.25rem; }
+.ind-name {
+  font-family: 'Space Grotesk'; font-weight: 600;
+  font-size: 0.9rem; line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+.ind.selected .ind-name { color: var(--green-dark); }
+.ind-meta {
+  font-family: 'JetBrains Mono'; font-size: 0.6rem;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--gray-2);
+}
+.ind.selected .ind-meta { color: var(--green); }
+
+.ind-levels { display: flex; gap: 0.35rem; }
+.lvl {
+  flex: 1; font-family: 'JetBrains Mono'; font-size: 0.6rem;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 0.42rem 0.3rem; text-align: center;
+  border: 1px solid var(--line); border-radius: var(--r-xs);
+  color: var(--gray); background: var(--paper);
+  transition: all 0.25s var(--ease);
+}
+.lvl:hover { border-color: var(--line-2); color: var(--ink); }
+.lvl.active { background: var(--green); border-color: var(--green); color: var(--white); }
+.lvl[data-lvl="low"].active { background: var(--red); border-color: var(--red); }
+.lvl[data-lvl="high"].active { background: var(--amber); border-color: var(--amber); }
+
+/* ---- Симптом ---- */
+.sim {
+  display: grid; grid-template-columns: 22px 1fr;
+  gap: 0.8rem; align-items: start;
+  padding: 0.9rem 1rem;
+  background: var(--white); border: 1px solid var(--line);
+  border-radius: var(--r-sm); cursor: pointer;
+  transition: all 0.3s var(--ease);
+}
+.sim:hover { border-color: var(--line-2); transform: translateY(-2px); }
+.sim input { position: absolute; opacity: 0; pointer-events: none; }
+.sim-mark {
+  width: 22px; height: 22px; border-radius: 5px;
+  border: 1.5px solid var(--line-2);
+  display: grid; place-items: center;
+  transition: all 0.25s var(--ease); margin-top: 1px;
+}
+.sim-mark svg { width: 13px; height: 13px; color: var(--white); opacity: 0; transform: scale(0.5); transition: all 0.25s var(--ease); }
+.sim-body { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.sim-name { font-size: 0.92rem; line-height: 1.35; font-weight: 500; color: var(--ink); letter-spacing: -0.005em; }
+.sim-cat {
+  font-family: 'JetBrains Mono'; font-size: 0.58rem;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--gray-2);
+}
+.sim:has(input:checked) { background: var(--violet-pale); border-color: var(--violet); }
+.sim:has(input:checked) .sim-mark { background: var(--violet); border-color: var(--violet); }
+.sim:has(input:checked) .sim-mark svg { opacity: 1; transform: scale(1); }
+.sim:has(input:checked) .sim-name { color: var(--violet); }
+
+.ind.hidden, .sim.hidden { display: none; }
+.cat-group.hidden { display: none; }
+
+/* ==================== PANEL ==================== */
+.panel {
+  position: sticky; top: 88px;
+  background: var(--ink); color: var(--paper);
+  border-radius: var(--r-md); padding: 1.75rem;
+  overflow: hidden;
+}
+.panel::before {
+  content: ""; position: absolute; top: -30%; right: -20%;
+  width: 320px; height: 320px;
+  background: radial-gradient(circle, rgba(0,200,83,0.28), transparent 65%);
+  filter: blur(40px); pointer-events: none;
+}
+.panel.violet::before { background: radial-gradient(circle, rgba(155,126,224,0.35), transparent 65%); }
+.panel > * { position: relative; z-index: 2; }
+
+.panel-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding-bottom: 1rem; border-bottom: 1px solid rgba(244,244,240,0.15);
+  margin-bottom: 1.5rem;
+}
+.panel-head .mono { color: var(--green-hot); }
+.panel.violet .panel-head .mono { color: var(--violet-hot); }
+.panel-count {
+  font-family: 'JetBrains Mono'; font-size: 0.68rem;
+  letter-spacing: 0.1em; color: rgba(244,244,240,0.5);
+}
+
+.panel-empty {
+  text-align: center; padding: 2.5rem 1rem;
+  font-family: 'JetBrains Mono'; font-size: 0.7rem;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(244,244,240,0.35); line-height: 1.8;
+}
+
+.mini-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin-bottom: 1.5rem; }
+.mini-stat {
+  padding: 0.85rem 0.9rem;
+  border: 1px solid rgba(244,244,240,0.14);
+  border-radius: var(--r-xs);
+}
+.mini-stat .ms-lbl {
+  font-family: 'JetBrains Mono'; font-size: 0.58rem;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(244,244,240,0.45); margin-bottom: 0.3rem;
+}
+.mini-stat .ms-val {
+  font-family: 'Space Grotesk'; font-weight: 700;
+  font-size: 1.4rem; letter-spacing: -0.03em; line-height: 1;
+}
+.mini-stat .ms-val.low { color: #e05a4a; }
+.mini-stat .ms-val.mid { color: #e0a93b; }
+.mini-stat .ms-val.ok { color: var(--green-hot); }
+.panel.violet .mini-stat .ms-val.ok { color: var(--violet-hot); }
+
+.cat-bars { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem; }
+.cat-bar { display: flex; flex-direction: column; gap: 0.3rem; }
+.cat-bar-top {
+  display: flex; justify-content: space-between;
+  font-family: 'JetBrains Mono'; font-size: 0.6rem;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: rgba(244,244,240,0.6);
+}
+.cat-bar-track {
+  height: 3px; background: rgba(244,244,240,0.12);
+  border-radius: 100px; overflow: hidden;
+}
+.cat-bar-fill {
+  height: 100%; background: var(--green-hot); border-radius: 100px;
+  transition: width 0.7s var(--ease);
+}
+.panel.violet .cat-bar-fill { background: var(--violet-hot); }
+
+.verdict {
+  padding: 1rem 1.1rem; margin-bottom: 1.5rem;
+  border-left: 3px solid var(--gray-2);
+  background: rgba(244,244,240,0.05);
+  border-radius: 0 var(--r-xs) var(--r-xs) 0;
+}
+.verdict.ok { border-color: var(--green-hot); }
+.verdict.mid { border-color: #e0a93b; }
+.verdict.bad { border-color: #e05a4a; }
+.verdict .v-lbl {
+  font-family: 'JetBrains Mono'; font-size: 0.6rem;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(244,244,240,0.5); margin-bottom: 0.4rem;
+}
+.verdict .v-txt { font-size: 0.92rem; line-height: 1.5; color: rgba(244,244,240,0.9); }
+
+.panel .btn { width: 100%; justify-content: center; }
+.panel .btn-primary { background: var(--green); color: var(--white); }
+.panel .btn-primary:hover { background: var(--white); color: var(--ink); }
+.panel.violet .btn-primary { background: var(--violet); }
+.panel.violet .btn-primary:hover { background: var(--white); color: var(--ink); }
+
+/* ==================== REPORT ==================== */
+.report-section { background: var(--white); border-top: 1px solid var(--line); display: none; }
+.report-section.on { display: block; }
+
+.report-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 2rem; flex-wrap: wrap;
+  padding-bottom: 1.5rem; margin-bottom: 2.5rem;
+  border-bottom: 1px solid var(--line);
+}
+.report-head .mono { color: var(--green); }
+.report-head h3 { font-size: clamp(1.5rem, 3vw, 2.2rem); }
+.report-date {
+  font-family: 'JetBrains Mono'; font-size: 0.68rem;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--gray);
+}
+
+.report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+.rblock {
+  padding: 1.75rem; border-radius: var(--r-md);
+  background: var(--paper); border: 1px solid var(--line);
+}
+.rblock.wide { grid-column: span 2; }
+.rblock.accent { background: var(--green); color: var(--white); border-color: var(--green); }
+.rblock.accent-violet { background: var(--violet); color: var(--white); border-color: var(--violet); }
+.rblock.dark { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.rblock-title {
+  display: flex; align-items: center; gap: 0.6rem;
+  font-family: 'JetBrains Mono'; font-size: 0.66rem;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  margin-bottom: 1.25rem; padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--line);
+}
+.rblock.accent .rblock-title, .rblock.accent-violet .rblock-title { border-color: rgba(255,255,255,0.3); }
+.rblock.dark .rblock-title { border-color: rgba(244,244,240,0.18); }
+.rblock-title .idx {
+  font-family: 'Space Grotesk'; font-weight: 700;
+  font-size: 0.9rem; letter-spacing: 0;
+}
+
+.rblock ul, .rblock ol { list-style: none; display: flex; flex-direction: column; gap: 0.85rem; }
+.rblock li {
+  display: grid; grid-template-columns: 22px 1fr;
+  gap: 0.7rem; font-size: 0.94rem; line-height: 1.5;
+}
+.rblock li::before {
+  content: "✦"; color: var(--green); font-size: 0.7rem; padding-top: 0.3rem;
+}
+.rblock.accent li::before { color: var(--white); }
+.rblock.accent-violet li::before { color: var(--white); }
+.rblock.dark li::before { color: var(--green-hot); }
+.rblock ol { counter-reset: step; }
+.rblock ol li { grid-template-columns: 26px 1fr; counter-increment: step; }
+.rblock ol li::before {
+  content: counter(step, decimal-leading-zero);
+  font-family: 'JetBrains Mono'; font-size: 0.7rem;
+  letter-spacing: 0.05em; color: var(--gray); padding-top: 0.28rem;
+}
+.rblock.dark ol li::before { color: var(--green-hot); }
+.rblock li strong { font-weight: 600; }
+.rblock li span.sub {
+  display: block; font-size: 0.84rem;
+  color: var(--gray); margin-top: 0.3rem; line-height: 1.5;
+}
+.rblock.accent li span.sub, .rblock.accent-violet li span.sub { color: rgba(255,255,255,0.82); }
+.rblock.dark li span.sub { color: rgba(244,244,240,0.65); }
+
+.tag {
+  display: inline-block; font-family: 'JetBrains Mono';
+  font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 0.2rem 0.5rem; border: 1px solid currentColor;
+  border-radius: 100px; opacity: 0.65; margin-left: 0.5rem;
+}
+.tag.low { color: var(--red); opacity: 1; border-color: var(--red); }
+.tag.high { color: var(--amber); opacity: 1; border-color: var(--amber); }
+.tag.ok { color: var(--green); opacity: 1; border-color: var(--green); }
+
+/* Syndrome hero */
+.syndrome-hero {
+  grid-column: span 2;
+  background: var(--ink); color: var(--paper);
+  border-radius: var(--r-md); padding: clamp(2rem, 4vw, 3rem);
+  position: relative; overflow: hidden;
+}
+.syndrome-hero::before {
+  content: ""; position: absolute; top: -30%; right: -15%;
+  width: 460px; height: 460px;
+  background: radial-gradient(circle, rgba(155,126,224,0.4), transparent 65%);
+  filter: blur(50px); pointer-events: none;
+}
+.syndrome-hero > * { position: relative; z-index: 2; }
+.syn-eyebrow {
+  font-family: 'JetBrains Mono'; font-size: 0.66rem;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--violet-hot); margin-bottom: 1rem;
+  display: flex; align-items: center; gap: 0.7rem;
+}
+.syn-eyebrow::before { content: ""; width: 24px; height: 1px; background: var(--violet-hot); }
+.syn-name {
+  font-family: 'Space Grotesk'; font-weight: 700;
+  font-size: clamp(1.6rem, 4vw, 3rem);
+  line-height: 1; letter-spacing: -0.035em;
+  text-transform: uppercase;
+  margin-bottom: 1.25rem;
+}
+.syn-name em { font-style: normal; color: var(--violet-hot); }
+.syn-meta {
+  display: flex; gap: 2rem; flex-wrap: wrap;
+  padding-top: 1.25rem; border-top: 1px solid rgba(244,244,240,0.18);
+}
+.syn-meta-item { display: flex; flex-direction: column; gap: 0.2rem; }
+.syn-meta-item .sm-lbl {
+  font-family: 'JetBrains Mono'; font-size: 0.6rem;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(244,244,240,0.45);
+}
+.syn-meta-item .sm-val {
+  font-family: 'Space Grotesk'; font-weight: 600;
+  font-size: 1rem; letter-spacing: -0.01em;
+}
+.syn-meta-item .sm-val.violet { color: var(--violet-hot); }
+
+.prog-block { margin-top: 1.5rem; }
+.prog-row { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.9rem; }
+.prog-top {
+  display: flex; justify-content: space-between;
+  font-family: 'JetBrains Mono'; font-size: 0.64rem;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(244,244,240,0.6);
+}
+.prog-top b { color: var(--paper); font-weight: 700; }
+.prog-track {
+  height: 4px; background: rgba(244,244,240,0.12);
+  border-radius: 100px; overflow: hidden;
+}
+.prog-fill {
+  height: 100%; background: var(--violet-hot); border-radius: 100px;
+  width: 0; transition: width 1s var(--ease);
+}
+.prog-fill.green { background: var(--green-hot); }
+.prog-fill.amber { background: #e0a93b; }
+.prog-fill.red { background: #e05a4a; }
+
+.report-foot {
+  margin-top: 2.5rem; padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 1.5rem; flex-wrap: wrap;
+}
+.report-foot .rf-note {
+  font-family: 'JetBrains Mono'; font-size: 0.66rem;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--gray);
+  max-width: 640px; line-height: 1.7;
+}
+
+/* ==================== METHOD ==================== */
+.method-section { background: var(--paper); }
+.method-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.method-card {
+  padding: 1.75rem; background: var(--white);
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  min-height: 240px; display: flex; flex-direction: column;
+}
+.method-card .m-idx {
+  font-family: 'Space Grotesk'; font-weight: 700;
+  font-size: 2.2rem; color: var(--green);
+  line-height: 1; letter-spacing: -0.03em; margin-bottom: 1rem;
+}
+.method-card.violet .m-idx { color: var(--violet); }
+.method-card h4 { font-size: 1.05rem; margin-bottom: 0.7rem; letter-spacing: -0.015em; line-height: 1.15; }
+.method-card p { font-size: 0.92rem; line-height: 1.6; color: var(--gray); }
+.method-card p strong { color: var(--ink); font-weight: 500; }
+
+/* ==================== FAQ ==================== */
+.faq-list { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.faq-item { border-bottom: 1px solid var(--line); }
+.faq-q {
+  width: 100%; text-align: left; padding: 1.7rem 0;
+  display: grid; grid-template-columns: 60px 1fr 40px;
+  gap: 1rem; align-items: center;
+  transition: all 0.3s var(--ease); cursor: pointer;
+}
+.faq-q:hover { padding-left: 1rem; }
+.faq-num { font-family: 'JetBrains Mono'; font-size: 0.72rem; letter-spacing: 0.1em; color: var(--gray); }
+.faq-q:hover .faq-num { color: var(--green); }
+.faq-text {
+  font-family: 'Space Grotesk'; font-weight: 600;
+  font-size: clamp(1rem, 1.45vw, 1.28rem);
+  text-transform: uppercase; letter-spacing: -0.015em; line-height: 1.2;
+}
+.faq-icon {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 1px solid var(--line-2); display: grid; place-items: center;
+  transition: all 0.4s var(--ease);
+}
+.faq-icon svg { width: 12px; height: 12px; }
+.faq-item.open .faq-icon {
+  background: var(--green); border-color: var(--green); color: var(--white);
+  transform: rotate(45deg);
+}
+.faq-a { max-height: 0; overflow: hidden; transition: max-height 0.5s var(--ease), padding 0.4s var(--ease); }
+.faq-item.open .faq-a { max-height: 500px; padding: 0 0 1.7rem 60px; }
+.faq-a p { font-size: 1rem; line-height: 1.65; color: var(--gray); max-width: 760px; }
+.faq-a p + p { margin-top: 0.8rem; }
+
+/* ==================== CTA ==================== */
+.cta {
+  background: var(--green); color: var(--white);
+  padding: clamp(4rem, 10vw, 8rem) clamp(1rem, 3vw, 2rem);
+  position: relative; overflow: hidden;
+}
+.cta-marquee {
+  position: absolute; top: 50%; left: 0;
+  transform: translateY(-50%);
+  font-family: 'Space Grotesk'; font-weight: 700;
+  font-size: clamp(5rem, 18vw, 18rem);
+  letter-spacing: -0.06em; text-transform: uppercase; white-space: nowrap;
+  color: rgba(255,255,255,0.06); pointer-events: none; line-height: 0.85;
+  animation: slide 60s linear infinite; width: max-content; display: flex; gap: 4rem;
+}
+.cta-inner { max-width: 1440px; margin: 0 auto; position: relative; z-index: 2; }
+.cta-top { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
+.cta-top .star { width: 40px; height: 40px; color: var(--white); }
+.cta-top .star circle { fill: var(--white); }
+.cta-top .star path { fill: var(--green); }
+.cta-top .label { font-family: 'JetBrains Mono'; font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; }
+.cta h2 { font-size: clamp(2rem, 7vw, 6rem); line-height: 0.9; letter-spacing: -0.05em; margin-bottom: 2.5rem; max-width: 1000px; }
+.cta h2 em { font-style: normal; color: var(--ink); }
+.cta-bottom {
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 3rem; align-items: end;
+  padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.25);
+}
+.cta p { font-size: 1.05rem; line-height: 1.55; max-width: 540px; opacity: 0.92; }
+.cta .btn-primary { background: var(--ink); color: var(--white); }
+.cta .btn-primary:hover { background: var(--white); color: var(--ink); }
+
+/* ==================== FOOTER ==================== */
+footer { background: var(--ink); color: var(--paper); padding: 4rem clamp(1rem, 3vw, 2rem) 1.5rem; overflow: hidden; }
+.footer-inner { max-width: 1440px; margin: 0 auto; }
+.footer-top {
+  display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 3rem; padding-bottom: 3rem;
+  border-bottom: 1px solid rgba(244,244,240,0.15);
+}
+.footer-brand .nav-brand { color: var(--paper); font-size: 1.15rem; margin-bottom: 1rem; }
+.footer-brand .nav-brand .star { color: var(--green-hot); }
+.footer-brand .nav-brand .star circle { fill: var(--green-hot); }
+.footer-brand .nav-brand .star path { fill: var(--ink); }
+.footer-brand p { font-size: 0.92rem; line-height: 1.6; color: rgba(244,244,240,0.6); max-width: 360px; }
+.footer-col h4 {
+  font-family: 'JetBrains Mono'; font-size: 0.68rem;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--green-hot); margin-bottom: 1.2rem; font-weight: 500;
+}
+.footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 0.7rem; }
+.footer-col a { font-size: 0.9rem; color: rgba(244,244,240,0.65); transition: color 0.25s var(--ease); }
+.footer-col a:hover { color: var(--green-hot); }
+.footer-giant {
+  font-family: 'Space Grotesk'; font-weight: 700;
+  font-size: clamp(4rem, 19vw, 20rem);
+  line-height: 0.82; letter-spacing: -0.055em; text-transform: uppercase;
+  padding: 3rem 0 1rem; display: flex; justify-content: center;
+  gap: 0.05em; color: var(--paper);
+  cursor: default; user-select: none;
+}
+.footer-giant .g-green { color: var(--green-hot); transition: transform 0.9s var(--ease); display: inline-block; }
+.footer-giant .g-green.spin { transform: rotate(360deg); }
+.footer-bottom {
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 1rem;
+  padding-top: 1.5rem; border-top: 1px solid rgba(244,244,240,0.15);
+  font-family: 'JetBrains Mono'; font-size: 0.68rem;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(244,244,240,0.5);
+}
+.footer-bottom .fb-right { display: flex; align-items: center; gap: 0.9rem; }
+
+/* ==================== EASTER EGGS ==================== */
+.egg-btn {
+  font-size: 0.7rem; line-height: 1;
+  color: rgba(244,244,240,0.22);
+  padding: 0.2rem 0.15rem;
+  transition: color 0.6s var(--ease);
+  cursor: pointer;
+}
+.egg-btn:hover { color: rgba(244,244,240,0.42); }
+
+.falling {
+  position: fixed; top: -70px; z-index: 10001;
+  pointer-events: none; user-select: none;
+  animation: fall linear forwards;
+  will-change: transform;
+}
+@keyframes fall {
+  to { transform: translateY(115vh) rotate(var(--rot)); opacity: 0; }
+}
+
+.stars-fast .star { animation-duration: 0.7s !important; }
+
+.egg-toast {
+  position: fixed; left: 50%; bottom: 2.5rem; z-index: 10002;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--ink); color: var(--paper);
+  padding: 0.9rem 1.4rem; border-radius: 100px;
+  font-family: 'JetBrains Mono'; font-size: 0.68rem;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  border: 1px solid rgba(244,244,240,0.2);
+  opacity: 0; pointer-events: none;
+  transition: all 0.5s var(--ease);
+  white-space: nowrap;
+}
+.egg-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.egg-toast em { font-style: normal; color: var(--green-hot); }
+
+/* ==================== REVEAL ==================== */
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity 1s var(--ease), transform 1s var(--ease); }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 1100px) {
+  .tool-grid { grid-template-columns: 1fr; }
+  .panel { position: relative; top: 0; }
+  .method-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 1024px) {
+  .nav-menu, .nav-lang { display: none; }
+  .burger { display: flex; }
+  .hero-title .row.indent { padding-left: 5vw; }
+  .section-head { grid-template-columns: 1fr; gap: 1.5rem; }
+  .report-grid { grid-template-columns: 1fr; }
+  .rblock.wide, .syndrome-hero { grid-column: span 1; }
+  .cta-bottom { grid-template-columns: 1fr; gap: 1.5rem; }
+  .footer-top { grid-template-columns: 1fr 1fr; gap: 2rem; }
+  .mode-switch { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+  .diag-grid { grid-template-columns: 1fr; }
+  .method-grid { grid-template-columns: 1fr; }
+  .hero { padding-top: 7rem; }
+  .hero-bottom { grid-template-columns: 1fr; gap: 1.5rem; }
+  .hero-actions { justify-content: flex-start; }
+  .hero-title .row.indent { padding-left: 0; }
+  .faq-q { grid-template-columns: 40px 1fr 32px; gap: 0.6rem; }
+  .faq-item.open .faq-a { padding-left: 40px; }
+  .footer-top { grid-template-columns: 1fr; }
+  .picker-actions { width: 100%; }
+  .picker-actions .btn { flex: 1; justify-content: center; }
+  .syn-meta { gap: 1.25rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- ==================== SPLASH ==================== -->
+<div class="splash" id="splash">
+  <div class="splash-inner">
+    <h1>VA <em>KLINIKO</em></h1>
+    <div class="splash-sub">Diagnozo · Simptomoj · v3.0</div>
+    <div class="splash-bar"></div>
+  </div>
+</div>
+
+<div class="progress"><span id="progressBar"></span></div>
+
+<!-- ==================== NAV ==================== -->
+<nav class="nav">
+  <a href="#" class="nav-brand" id="navBrand">
+    <svg class="star" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="50"/>
+      <path d="M50 14 L60 39 L88 41 L66 59 L74 87 L50 71 L26 87 L34 59 L12 41 L40 39 Z"/>
+    </svg>
+    <span>VA&nbsp;Kliniko</span>
+  </a>
+
+  <div class="nav-menu">
+    <a href="#tool">Kalkulilo</a>
+    <a href="#report">Konkludo</a>
+    <a href="#method">Metodiko</a>
+    <a href="#faq">Demandoj</a>
+  </div>
+
+  <div class="nav-end">
+    <span class="nav-lang"><strong>RU</strong>&nbsp;/&nbsp;EO</span>
+    <a href="#tool" class="nav-cta">
+      Komenci
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+    <button class="burger" id="burger" aria-label="Меню"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+
+<!-- ==================== MOBILE MENU ==================== -->
+<div class="mobile-menu" id="mobileMenu">
+  <button class="mobile-close" id="mobileClose" aria-label="Закрыть">✕</button>
+  <a href="#tool">Kalkulilo</a>
+  <a href="#report">Konkludo</a>
+  <a href="#method">Metodiko</a>
+  <a href="#faq">Demandoj</a>
+  <a href="#footer">Kontakto</a>
+</div>
+
+<!-- ==================== HERO ==================== -->
+<header class="hero">
+  <div class="hero-top">
+    <div class="hero-meta">
+      <div class="hero-meta-item"><span class="lbl">Reĝimo</span><span class="val">Klinika</span></div>
+      <div class="hero-meta-item"><span class="lbl">Versio</span><span class="val">3.0 · 2026</span></div>
+      <div class="hero-meta-item"><span class="lbl">Analizoj</span><span class="val">38 parametroj</span></div>
+      <div class="hero-meta-item"><span class="lbl">Simptomoj</span><span class="val">44 kondiĉoj</span></div>
+    </div>
+    <span class="hero-tag">Sistema pretas</span>
+  </div>
+
+  <h1 class="hero-title">
+    <span class="row"><span class="word">VA</span></span>
+    <span class="row indent">
+      <span class="word">Kliniko</span>
+      <span class="orn">✦</span>
+    </span>
+    <span class="row center"><span class="word">Sistemo</span></span>
+  </h1>
+
+  <div class="hero-bottom">
+    <p class="hero-sub">
+      Внутренний клинический модуль клуба <strong>Vulpeto Abeleto</strong>. Два режима: расшифровка собственных анализов и генератор вымышленных синдромов для участников. Ни один вывод не имеет отношения к реальной медицине.
+    </p>
+    <div class="hero-actions">
+      <a href="#tool" class="btn btn-primary">
+        Malfermi modulon
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+      <a href="#method" class="btn btn-outline">Metodiko</a>
+    </div>
+  </div>
+</header>
+
+<!-- ==================== MARQUEE ==================== -->
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-track">
+    <div class="marquee-item">
+      Analizo <em>·</em> Simptomo <em>·</em> Konkludo
+      <svg class="star" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50"/><path d="M50 14 L60 39 L88 41 L66 59 L74 87 L50 71 L26 87 L34 59 L12 41 L40 39 Z"/></svg>
+      38 parametroj <em>·</em> 44 kondiĉoj <em>·</em> 2026
+      <svg class="star" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50"/><path d="M50 14 L60 39 L88 41 L66 59 L74 87 L50 71 L26 87 L34 59 L12 41 L40 39 Z"/></svg>
+      Neniu medicina valoro <em>·</em> tamen <em>·</em> amuze
+      <svg class="star" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50"/><path d="M50 14 L60 39 L88 41 L66 59 L74 87 L50 71 L26 87 L34 59 L12 41 L40 39 Z"/></svg>
+    </div>
+    <div class="marquee-item" aria-hidden="true">
+      Analizo <em>·</em> Simptomo <em>·</em> Konkludo
+      <svg class="star" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50"/><path d="M50 14 L60 39 L88 41 L66 59 L74 87 L50 71 L26 87 L34 59 L12 41 L40 39 Z"/></svg>
+      38 parametroj <em>·</em> 44 kondiĉoj <em>·</em> 2026
+      <svg class="star" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50"/><path d="M50 14 L60 39 L88 41 L66 59 L74 87 L50 71 L26 87 L34 59 L12 41 L40 39 Z"/></svg>
+      Neniu medicina valoro <em>·</em> tamen <em>·</em> amuze
+      <svg class="star" viewBox="0 0 100 100"><circle cx="50" cy="50" r="50"/><path d="M50 14 L60 39 L88 41 L66 59 L74 87 L50 71 L26 87 L34 59 L12 41 L40 39 Z"/></svg>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TOOL ==================== -->
+<section id="tool" class="section tool-section">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="section-label">
+        <span class="num" data-num="01">01</span>
+        <span class="title">Modulo</span>
+      </div>
+      <div class="section-head-content">
+        <h2>Два режима.<br><em>Одна клиника.</em></h2>
+        <p class="head-desc">
+          <strong>Diagnozo</strong> расшифровывает ваши анализы — выберите показатель и уровень, получите интерпретацию в привычном канцелярском тоне. <strong>Simptomoj</strong> собирает вымышленный синдром из ваших клубных привычек. Оба режима работают прямо в браузере и ничего никуда не отправляют.
+        </p>
+      </div>
+    </div>
+
+    <div class="mode-switch reveal">
+      <button class="mode-btn active" data-mode="diagnozo">
+        <span class="mb-idx">Modulo 01 · Analizoj</span>
+        <span class="mb-name">VA Diagnozo</span>
+        <span class="mb-desc">38 лабораторных и инструментальных показателей. Выберите уровень — ниже, норма или выше — и получите интерпретацию.</span>
+      </button>
+      <button class="mode-btn" data-mode="simptomoj">
+        <span class="mb-idx">Modulo 02 · Kondiĉoj</span>
+        <span class="mb-name">VA Simptomoj</span>
+        <span class="mb-desc">44 клубных симптома в шести категориях. Система соберёт из них вымышленный синдром с названием, кодом и прогнозом.</span>
+      </button>
+    </div>
+
+    <!-- ========== MODE 1: DIAGNOZO ========== -->
+    <div class="mode-panel active" id="mode-diagnozo">
+      <div class="tool-grid">
+        <div class="picker">
+          <div class="picker-top">
+            <div class="search-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <input type="text" class="search" id="searchDiag" placeholder="Поиск по показателю или единице измерения…">
+            </div>
+            <div class="picker-actions">
+              <button class="btn btn-ghost" id="clearDiag">Sensignigi</button>
+            </div>
+          </div>
+          <div id="pickerDiag"></div>
+        </div>
+
+        <aside class="panel" id="panelDiag">
+          <div class="panel-head">
+            <span class="mono">Analizo</span>
+            <span class="panel-count" id="countDiag">0 показателей</span>
+          </div>
+          <div id="bodyDiag">
+            <div class="panel-empty">Показатели не отмечены.<br>Выберите хотя бы один<br>для начала разбора.</div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <!-- ========== MODE 2: SIMPTOMOJ ========== -->
+    <div class="mode-panel" id="mode-simptomoj">
+      <div class="tool-grid">
+        <div class="picker">
+          <div class="picker-top">
+            <div class="search-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <input type="text" class="search" id="searchSimp" placeholder="Поиск по симптому или категории…">
+            </div>
+            <div class="picker-actions">
+              <button class="btn btn-ghost" id="clearSimp">Sensignigi</button>
+            </div>
+          </div>
+          <div id="pickerSimp"></div>
+        </div>
+
+        <aside class="panel violet" id="panelSimp">
+          <div class="panel-head">
+            <span class="mono">Kondiĉoj</span>
+            <span class="panel-count" id="countSimp">0 симптомов</span>
+          </div>
+          <div id="bodySimp">
+            <div class="panel-empty">Симптомы не отмечены.<br>Отметьте хотя бы один,<br>чтобы собрать синдром.</div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ==================== REPORT ==================== -->
+<section id="report" class="section report-section">
+  <div class="container">
+    <div class="report-head reveal">
+      <span class="mono" id="reportNo">Protokolo № 0000-00</span>
+      <h3 id="reportTitle">Предварительное заключение</h3>
+      <span class="report-date" id="reportDate">—</span>
+    </div>
+    <div id="reportBody"></div>
+  </div>
+</section>
+
+<!-- ==================== METHOD ==================== -->
+<section id="method" class="section method-section">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="section-label">
+        <span class="num" data-num="02">02</span>
+        <span class="title">Metodiko</span>
+      </div>
+      <div class="section-head-content">
+        <h2>Как считает<br><em>система.</em></h2>
+        <p class="head-desc">
+          Модуль использует внутреннюю методику клуба Vulpeto Abeleto. Она не одобрена ни одним медицинским учреждением, не опирается на доказательную базу и не имеет юридической силы. Именно поэтому ей можно доверять.
+        </p>
+      </div>
+    </div>
+
+    <div class="method-grid">
+      <div class="method-card reveal">
+        <div class="m-idx">01</div>
+        <h4>Режим Diagnozo</h4>
+        <p>Каждый показатель имеет три интерпретации: <strong>ниже нормы</strong>, <strong>в норме</strong> и <strong>выше нормы</strong>. Тексты составлены редакцией клуба и не проверялись ни одним врачом. Считайте их дружеским мнением, а не диагнозом.</p>
+      </div>
+      <div class="method-card violet reveal">
+        <div class="m-idx">02</div>
+        <h4>Режим Simptomoj</h4>
+        <p>Система берёт выбранные симптомы, определяет <strong>доминирующую категорию</strong> и собирает из неё название синдрома. Количество симптомов задаёт тяжесть. Код МКБ выдуман полностью, совпадения случайны.</p>
+      </div>
+      <div class="method-card reveal">
+        <div class="m-idx">03</div>
+        <h4>Чего система не делает</h4>
+        <p>Не ставит диагнозов, <strong>не назначает лечения</strong>, не заменяет врача и не сохраняет ваши данные. Всё считается в браузере и исчезает при обновлении страницы. Если что-то беспокоит по-настоящему — идите к специалисту, а не к этому приложению.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== FAQ ==================== -->
+<section id="faq" class="section">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="section-label">
+        <span class="num" data-num="03">03</span>
+        <span class="title">Demandoj</span>
+      </div>
+      <div class="section-head-content">
+        <h2>Частые<br><em>вопросы.</em></h2>
+      </div>
+    </div>
+
+    <div class="faq-list">
+      <div class="faq-item reveal">
+        <button class="faq-q" aria-expanded="false">
+          <span class="faq-num">001</span>
+          <span class="faq-text">Это медицинское приложение?</span>
+          <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></span>
+        </button>
+        <div class="faq-a"><p>Нет. Это внутренний инструмент клуба Vulpeto Abeleto, написанный для развлечения. Он не является медицинским изделием, не имеет регистрационного удостоверения и не должен использоваться для принятия решений о здоровье. Все интерпретации — художественный вымысел.</p></div>
+      </div>
+
+      <div class="faq-item reveal">
+        <button class="faq-q" aria-expanded="false">
+          <span class="faq-num">002</span>
+          <span class="faq-text">Режим Diagnozo заменит поход к врачу?</span>
+          <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></span>
+        </button>
+        <div class="faq-a"><p>Ни в коем случае. Если у вас есть результаты анализов и вы не понимаете, что они значат, — обратитесь к врачу, который их назначил. Этот модуль расшифрует вам витамин D через метафору про петербургское солнце, но не скажет, нужна ли вам коррекция дозы.</p></div>
+      </div>
+
+      <div class="faq-item reveal">
+        <button class="faq-q" aria-expanded="false">
+          <span class="faq-num">003</span>
+          <span class="faq-text">Синдромы из режима Simptomoj настоящие?</span>
+          <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></span>
+        </button>
+        <div class="faq-a"><p>Полностью вымышленные. «Хронический аккузативный дисбаланс в эсперанто» не существует ни в одной классификации. Коды МКБ, которые вы увидите, сгенерированы алгоритмом и не совпадают с реальными. Если вам всё же поставят такой диагноз — сообщите редакции, это будет интересно.</p></div>
+      </div>
+
+      <div class="faq-item reveal">
+        <button class="faq-q" aria-expanded="false">
+          <span class="faq-num">004</span>
+          <span class="faq-text">Данные куда-то отправляются?</span>
+          <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></span>
+        </button>
+        <div class="faq-a"><p>Нет. Ни одна галочка, ни один симптом не покидают ваш браузер. Нет сервера, нет аналитики, нет сохранения. Обновите страницу — и всё исчезнет. Это единственный раздел приложения, которому можно верить буквально.</p></div>
+      </div>
+
+      <div class="faq-item reveal">
+        <button class="faq-q" aria-expanded="false">
+          <span class="faq-num">005</span>
+          <span class="faq-text">Почему в базе есть показатели по слуху и диабету?</span>
+          <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></span>
+        </button>
+        <div class="faq-a"><p>Потому что редакция собирала базу по принципу «что первое пришло в голову». Тексты к этим показателям — такие же шутки, как и ко всем остальным, и не описывают ни одну реальную процедуру. Разновидности диабета и нарушения слуха здесь представлены как лабораторные цифры и не более того.</p></div>
+      </div>
+
+      <div class="faq-item reveal">
+        <button class="faq-q" aria-expanded="false">
+          <span class="faq-num">006</span>
+          <span class="faq-text">Здесь есть что-то спрятанное?</span>
+          <span class="faq-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></span>
+        </button>
+        <div class="faq-a"><p>Возможно. Редакция не подтверждает и не опровергает. Попробуйте набрать «saluton» в любом месте страницы. Или пять раз кликнуть по логотипу в шапке. Или найти очень бледную звёздочку в самом низу. Дальше — сами.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== CTA ==================== -->
+<section class="cta">
+  <div class="cta-marquee" aria-hidden="true">
+    <span>Kalkulu Nun ✦ Kalkulu Nun ✦ Kalkulu Nun ✦ </span>
+  </div>
+
+  <div class="cta-inner">
+    <div class="cta-top">
+      <svg class="star" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="50"/>
+        <path d="M50 14 L60 39 L88 41 L66 59 L74 87 L50 71 L26 87 L34 59 L12 41 L40 39 Z"/>
+      </svg>
+      <span class="label">Konkludo · 2026</span>
+    </div>
+
+    <h2>Ваши цифры<br>заслуживают <em>истолкования.</em></h2>
+
+    <div class="cta-bottom">
+      <p>38 показателей, 44 симптома, два режима и ни одной настоящей рекомендации. Всё, что нужно, чтобы взглянуть на свои анализы с неожиданной стороны.</p>
+      <a href="#tool" class="btn btn-primary">
+        Reiri al modulo
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== FOOTER ==================== -->
+<footer id="footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a href="#" class="nav-brand">
+          <svg class="star" viewBox="0 0 100 100" aria-hidden="true">
+            <circle cx="50" cy="50" r="50"/>
+            <path d="M50 14 L60 39 L88 41 L66 59 L74 87 L50 71 L26 87 L34 59 L12 41 L40 39 Z"/>
+          </svg>
+          <span>VA&nbsp;Kliniko</span>
+        </a>
+        <p>Внутренний клинический модуль экосистемы Vulpeto Abeleto. Расшифровка анализов и генератор вымышленных синдромов. Не является медицинским изделием, не заменяет врача и не имеет ни малейшей практической ценности.</p>
+      </div>
+
+      <div class="footer-col">
+        <h4>Modulo</h4>
+        <ul>
+          <li><a href="#tool">VA Diagnozo</a></li>
+          <li><a href="#tool">VA Simptomoj</a></li>
+          <li><a href="#report">Заключение</a></li>
+          <li><a href="#method">Методика</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Ekosistemo</h4>
+        <ul>
+          <li><a href="#">Lingvo</a></li>
+          <li><a href="#">Forto</a></li>
+          <li><a href="#">Kalendaro</a></li>
+          <li><a href="#">Komunumo</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Kontakto</h4>
+        <ul>
+          <li><a href="mailto:saluton@vulpeto-abeleto.club">Email</a></li>
+          <li><a href="#">Telegram</a></li>
+          <li><a href="#">Discord</a></li>
+          <li><a href="#">Instagram</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-giant" aria-hidden="true">
+      <span>VA</span><span class="g-green" id="giantStar">✦</span><span>26</span>
+    </div>
+
+    <div class="footer-bottom">
+      <span>© 2026 Vulpeto Abeleto · Ĉiuj rajtoj rezervitaj</span>
+      <span class="fb-right">
+        <span>Analizo · Simptomo · Konkludo</span>
+        <button class="egg-btn" id="eggCats" aria-label="·">✦</button>
+      </span>
+    </div>
+  </div>
+</footer>
+
+<div class="egg-toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   ДАННЫЕ: DIAGNOZO (38 показателей)
+   ============================================================ */
+const DIAG = [
+  {
+    cat: 'Витамины и микроэлементы',
+    items: [
+      { id:'vitd', name:'Витамин D (25-OH)', meta:'нг/мл · референс 30–100',
+        low:'Критически петербургский уровень. Солнце вы видели в июле, и то через стекло офиса.',
+        norm:'Подозрительно ровно. Признайтесь, вы ездили в отпуск и скрыли это от редакции.',
+        high:'Вы принимаете витамин D горстями. Организм вежливо просит прекратить.' },
+      { id:'b12', name:'Витамин B12', meta:'пг/мл · референс 200–900',
+        low:'Нервные волокна шлют открытки с курорта, где их нет.',
+        norm:'Показатель в норме. Редкий случай, когда всё хорошо и сказать нечего.',
+        high:'Столько B12, что можно открыть филиал аптеки прямо в организме.' },
+      { id:'ferritin', name:'Ферритин', meta:'нг/мл · референс 30–300',
+        low:'Запасы железа на исходе. Похоже, вы живёте на кофе и силе воли.',
+        norm:'Запасы в порядке. Ложки гречки можно не считать.',
+        high:'Запасов железа столько, что можно открыть литейный цех.' },
+      { id:'iron', name:'Железо сывороточное', meta:'мкмоль/л · референс 9–30',
+        low:'Кислород доставляется с задержкой. Организм перешёл на тариф «эконом».',
+        norm:'Железо на месте. Продолжайте в том же духе, если дух позволяет.',
+        high:'Железо есть. Много железа. Очень много железа.' },
+      { id:'magnesium', name:'Магний', meta:'ммоль/л · референс 0.75–1.0',
+        low:'Нервная система на взводе. Ночные судороги передают привет.',
+        norm:'Магний в норме. Вечером можно расслабиться без угрызений совести.',
+        high:'Магний в избытке. Возможно, вы решили, что «больше» значит «лучше».' },
+      { id:'zinc', name:'Цинк', meta:'мкмоль/л · референс 11–24',
+        low:'Иммунитет работает на честном слове и на одном энтузиазме.',
+        norm:'Цинк в норме. Иммунитет в строю и не жалуется.',
+        high:'Цинк в избытке. Судя по всему, курс был пройден не по инструкции.' },
+      { id:'folate', name:'Фолиевая кислота', meta:'нг/мл · референс 4–20',
+        low:'Организм просит зелени. Не чипсов, а именно зелени.',
+        norm:'Фолиевая кислота в норме. Клетки довольны и работают молча.',
+        high:'Фолиевой кислоты много. Клетки в лёгкой растерянности.' },
+      { id:'potassium', name:'Калий', meta:'ммоль/л · референс 3.5–5.1',
+        low:'Калий на дне. Сердце просит бананов, и оно право.',
+        norm:'Калий в норме. Электролитный баланс спокоен.',
+        high:'Калий повышен. Почки шлют уведомление с пометкой «срочно».' }
+    ]
+  },
+  {
+    cat: 'Гормоны и обмен',
+    items: [
+      { id:'tsh', name:'ТТГ', meta:'мЕд/л · референс 0.4–4.0',
+        low:'Щитовидная железа работает как отдел кадров в пятницу — слишком быстро и без разбора.',
+        norm:'Щитовидная железа спокойна. Не трогайте её без повода.',
+        high:'Щитовидная железа в режиме забастовки. Обмен веществ ждёт новостей.' },
+      { id:'ft4', name:'Т4 свободный', meta:'пмоль/л · референс 9–22',
+        low:'Гормон на дне. Энергия — тоже, судя по всему.',
+        norm:'В норме. Скучно, но именно так и должно быть.',
+        high:'Организм перегрет. Возможно, вам жарко даже без отопления.' },
+      { id:'cortisol', name:'Кортизол', meta:'нмоль/л · референс 150–660',
+        low:'Кортизола мало. Возможно, вы научились расслабляться. Поздравляем, это редкость.',
+        norm:'Кортизол в норме. Стресс есть, но в рамках приличий.',
+        high:'Уровень кортизола как перед дедлайном. Причём дедлайн — ваша жизнь.' },
+      { id:'insulin', name:'Инсулин', meta:'мкЕд/мл · референс 2–25',
+        low:'Поджелудочная расслаблена. Возможно, даже слишком.',
+        norm:'Инсулин в норме. Углеводы под контролем, и это хорошая новость.',
+        high:'Поджелудочная в панике. Она не ожидала такого объёма работы.' },
+      { id:'glucose', name:'Глюкоза натощак', meta:'ммоль/л · референс 3.9–5.5',
+        low:'Сахар на дне. Съешьте что-нибудь, и срочно.',
+        norm:'Глюкоза в норме. Углеводный обмен работает как часы.',
+        high:'Сахар выше нормы. Сладкое на этой неделе — не ваш друг.' },
+      { id:'hba1c', name:'HbA1c (гликированный гемоглобин)', meta:'% · референс 4.0–5.6',
+        low:'Гликированный гемоглобин низкий. Либо вы очень дисциплинированы, либо отчёт не за тот период.',
+        norm:'Углеводный обмен за три месяца — в норме. Похвально и немного подозрительно.',
+        high:'Три месяца углеводного произвола зафиксированы документально.' },
+      { id:'cpeptide', name:'С-пептид', meta:'нг/мл · референс 0.8–3.9',
+        low:'Поджелудочная экономит силы. Возможно, они ей понадобятся позже.',
+        norm:'С-пептид в норме. Своя поджелудочная работает исправно.',
+        high:'Поджелудочная выдаёт больше, чем нужно. Кто-то явно перерабатывает.' },
+      { id:'testosterone', name:'Тестостерон', meta:'нмоль/л · референс 8–29',
+        low:'Уровень ниже нормы. Мотивация тоже, судя по всему.',
+        norm:'В норме. Гормональный фон стабилен и никого не беспокоит.',
+        high:'Уровень высокий. Спортзал вас ждёт, даже если вы не согласны.' },
+      { id:'estradiol', name:'Эстрадиол', meta:'пг/мл · референс 20–350',
+        low:'Эстрадиол низкий. Организм перешёл в режим экономии.',
+        norm:'В норме. Гормональный фон сбалансирован.',
+        high:'Уровень выше нормы. Стоит уточнить причины у специалиста, а не у этого приложения.' },
+      { id:'prolactin', name:'Пролактин', meta:'мкг/л · референс 4–15',
+        low:'Пролактин низкий. Всё спокойно, и это прекрасно.',
+        norm:'В норме. Лактация не планируется, и это правильно.',
+        high:'Пролактин высокий. Стресс, сон или спорт — что-то из этого перебор.' }
+    ]
+  },
+  {
+    cat: 'Кровь',
+    items: [
+      { id:'hb', name:'Гемоглобин', meta:'г/л · референс 120–160',
+        low:'Кислород доставляется с задержкой. Усталость — не в вашей голове.',
+        norm:'Гемоглобин в норме. Кровь справляется без нареканий.',
+        high:'Гемоглобин высокий. Возможно, вы живёте в горах и скрываете это.' },
+      { id:'rbc', name:'Эритроциты', meta:'10¹²/л · референс 3.8–5.1',
+        low:'Эритроцитов маловато. Дышать сложнее, чем должно быть.',
+        norm:'В норме. Кровь работает как часы, и это приятно.',
+        high:'Эритроцитов в избытке. Кровь густовата для комфортной жизни.' },
+      { id:'wbc', name:'Лейкоциты', meta:'10⁹/л · референс 4.0–9.0',
+        low:'Иммунитет на каникулах. Не подхватите ничего в метро.',
+        norm:'Лейкоциты в норме. Иммунная система бдит и не жалуется.',
+        high:'Лейкоциты повышены. Что-то в организме происходит, и это что-то не спросило разрешения.' },
+      { id:'plt', name:'Тромбоциты', meta:'10⁹/л · референс 150–400',
+        low:'Тромбоцитов мало. Синяки появляются сами по себе, без причины.',
+        norm:'В норме. Свёртываемость в порядке.',
+        high:'Тромбоцитов много. Кровь готова свернуться по любому поводу.' },
+      { id:'esr', name:'СОЭ', meta:'мм/ч · референс 2–15',
+        low:'СОЭ низкая. Воспаления нет, и это хорошая новость.',
+        norm:'В норме. Спокойно, ровно, без сюрпризов.',
+        high:'СОЭ повышена. Где-то тихо тлеет, и это не камин.' },
+      { id:'hct', name:'Гематокрит', meta:'% · референс 36–50',
+        low:'Гематокрит низкий. Кровь разбавлена сильнее, чем хотелось бы.',
+        norm:'В норме. Состав крови сбалансирован.',
+        high:'Гематокрит высокий. Кровь густая, как утро понедельника.' }
+    ]
+  },
+  {
+    cat: 'Липиды',
+    items: [
+      { id:'chol', name:'Общий холестерин', meta:'ммоль/л · референс 3.0–5.2',
+        low:'Холестерин низкий. Возможно, вы едите слишком аккуратно.',
+        norm:'В норме. Липидный профиль спокоен и стабилен.',
+        high:'Липидный профиль как у человека, который считает сало диетическим продуктом.' },
+      { id:'ldl', name:'ЛПНП («плохой» холестерин)', meta:'ммоль/л · референс 1.5–3.5',
+        low:'ЛПНП низкий. Сосуды довольны и говорят вам спасибо.',
+        norm:'В норме. Ничего тревожного.',
+        high:'«Плохой» холестерин повышен. Сосуды просят пощады.' },
+      { id:'hdl', name:'ЛПВП («хороший» холестерин)', meta:'ммоль/л · референс 1.0–2.2',
+        low:'«Хорошего» холестерина мало. Хорошее вообще редко бывает в достатке.',
+        norm:'В норме. Баланс соблюдён.',
+        high:'ЛПВП высокий. Хороший холестерин на высоте и в отличной форме.' },
+      { id:'tg', name:'Триглицериды', meta:'ммоль/л · референс 0.4–1.7',
+        low:'Триглицериды низкие. Углеводы не задерживаются.',
+        norm:'В норме. Углеводный обмен спокоен.',
+        high:'Триглицериды повышены. Углеводы явно были, и не раз.' }
+    ]
+  },
+  {
+    cat: 'Воспаление и печень',
+    items: [
+      { id:'crp', name:'СРБ (C-реактивный белок)', meta:'мг/л · референс 0–5',
+        low:'СРБ низкий. Воспаления нет, и это прекрасно.',
+        norm:'В норме. Тихо, спокойно, без сюрпризов.',
+        high:'Воспаление где-то есть. Где — не сказано, но оно точно есть.' },
+      { id:'alt', name:'АЛТ', meta:'Ед/л · референс 7–40',
+        low:'АЛТ низкий. Печень спокойна и работает молча.',
+        norm:'В норме. Печень работает без нареканий.',
+        high:'Печень намекает, что вечера пятницы надо проводить иначе.' },
+      { id:'ast', name:'АСТ', meta:'Ед/л · референс 7–40',
+        low:'АСТ низкий. Всё спокойно, печень довольна.',
+        norm:'В норме. Ничего тревожного.',
+        high:'АСТ повышен. Что-то нагружает печень, и это что-то не спорт.' },
+      { id:'bili', name:'Билирубин общий', meta:'мкмоль/л · референс 3–21',
+        low:'Билирубин низкий. Желтухи нет и не предвидится.',
+        norm:'В норме. Печень и желчный работают согласованно.',
+        high:'Билирубин высокий. Кожа может пожелтеть, если ещё нет.' },
+      { id:'alp', name:'Щелочная фосфатаза', meta:'Ед/л · референс 40–130',
+        low:'ЩФ низкая. Возможно, дефицит цинка или магния — проверьте по списку выше.',
+        norm:'В норме. Ничего подозрительного.',
+        high:'ЩФ повышена. Печень или кости подают сигнал.' }
+    ]
+  },
+  {
+    cat: 'Почки и обмен веществ',
+    items: [
+      { id:'creat', name:'Креатинин', meta:'мкмоль/л · референс 62–106',
+        low:'Креатинин низкий. Мышечная масса, вероятно, скромная.',
+        norm:'В норме. Почки справляются без нареканий.',
+        high:'Почки работают в режиме «мы вас предупреждали».' },
+      { id:'urea', name:'Мочевина', meta:'ммоль/л · референс 2.5–8.3',
+        low:'Мочевина низкая. Белка в рационе маловато.',
+        norm:'В норме. Азотистый обмен спокоен.',
+        high:'Мочевина повышена. Почки просят разгрузки.' },
+      { id:'ua', name:'Мочевая кислота', meta:'мкмоль/л · референс 150–420',
+        low:'Мочевая кислота низкая. Подагра вам не грозит.',
+        norm:'В норме. Пуриновый обмен стабилен.',
+        high:'Мочевая кислота повышена. Суставы просят воздержаться от мясного.' },
+      { id:'gfr', name:'СКФ (скорость клубочковой фильтрации)', meta:'мл/мин · референс 90–120',
+        low:'СКФ низкая. Почки работают не в полную силу.',
+        norm:'В норме. Фильтрация в порядке.',
+        high:'СКФ высокая. Почки работают с запасом и гордятся этим.' }
+    ]
+  },
+  {
+    cat: 'Слуховой профиль',
+    items: [
+      { id:'hear_250', name:'Порог слышимости 250 Гц', meta:'дБ · норма до 25',
+        low:'Вы слышите всё, включая то, что не предназначено для ваших ушей.',
+        norm:'Порог в норме. Низкие частоты воспринимаются как надо.',
+        high:'Низкие частоты приходят с трудом. Бас кажется тише, чем есть.' },
+      { id:'hear_1k', name:'Порог слышимости 1 кГц', meta:'дБ · норма до 25',
+        low:'Слух на речевых частотах обострён. Вы слышите шёпот через стену.',
+        norm:'Порог в норме. Речь разбирается легко.',
+        high:'Порог выше нормы. Речь разбирается, но с усилием.' },
+      { id:'hear_4k', name:'Порог слышмости 4 кГц', meta:'дБ · норма до 25',
+        low:'Вы слышите то, что не должны слышать. Писк зарядки, гул лампы — всё ваше.',
+        norm:'Порог в норме. Высокие частоты воспринимаются корректно.',
+        high:'Высокие частоты уходят первыми. Это не невнимательность, это физиология.' },
+      { id:'hear_8k', name:'Порог слышимости 8 кГц', meta:'дБ · норма до 25',
+        low:'Ультразвук вам почти доступен. Собаки смотрят с уважением.',
+        norm:'Порог в норме. Верхний диапазон в порядке.',
+        high:'Верхние частоты приходят с задержкой. Комар уже не тревожит.' },
+      { id:'speech_int', name:'Разборчивость речи', meta:'% · норма 90–100',
+        low:'Речь разбирается с трудом. Приходится смотреть на губы.',
+        norm:'Разборчивость в норме. Собеседники не напрягаются.',
+        high:'Разборчивость отличная. Вы слышите даже то, что не предназначено.' },
+      { id:'bone_cond', name:'Костная проводимость', meta:'дБ · норма до 20',
+        low:'Костная проводимость отличная. Внутренний голос звучит громко.',
+        norm:'В норме. Внутреннее ухо работает штатно.',
+        high:'Костная проводимость снижена. Внутреннее ухо просит внимания.' }
+    ]
+  }
+];
+
+/* ============================================================
+   ДАННЫЕ: SIMPTOMOJ (44 симптома в 6 категориях)
+   ============================================================ */
+const SIMP = [
+  {
+    cat: 'Lingvaj', catRu: 'Языковые',
+    items: [
+      { id:'s01', name:'Забыли слово на полусвете предложения', tail:'Эпизоды лексической амнезии в середине фразы.' },
+      { id:'s02', name:'Путаете «kaj» и «aŭ» в ответственный момент', tail:'Смешение союзов при повышенной нагрузке.' },
+      { id:'s03', name:'Чрезмерно употребляете «nu»', tail:'Частотный повтор междометия «nu» вне контекста.' },
+      { id:'s04', name:'Произносите «ĥ» как русское «х»', tail:'Замена фрикативного согласного на привычный.' },
+      { id:'s05', name:'Ставите ударение на предпоследний слог даже в русском', tail:'Устойчивый перенос эсперанто-просодии на родную речь.' },
+      { id:'s06', name:'Отвечаете «jes» на русский вопрос', tail:'Автоматическая смена языкового регистра без предупреждения.' },
+      { id:'s07', name:'Читаете эсперанто с русской интонацией', tail:'Просодическая интерференция при чтении вслух.' },
+      { id:'s08', name:'Думаете на эсперанто и не можете переключиться', tail:'Затяжной языковой сдвиг внутреннего монолога.' }
+    ]
+  },
+  {
+    cat: 'Sociaj', catRu: 'Социальные',
+    items: [
+      { id:'s09', name:'Боитесь говорить при носителях', tail:'Острый коммуникативный ступор в присутствии fluent-спикеров.' },
+      { id:'s10', name:'Стесняетесь заказать кофе на эсперанто', tail:'Бытовая речевая блокада в публичных местах.' },
+      { id:'s11', name:'Киваете, не понимая', tail:'Автоматическое согласие без декодирования смысла.' },
+      { id:'s12', name:'Избегаете разговорных комнат', tail:'Устойчивое избегание групповой речевой практики.' },
+      { id:'s13', name:'Молчите в чате клуба', tail:'Латентная пассивность в текстовой коммуникации.' },
+      { id:'s14', name:'Извиняетесь за акцент', tail:'Компенсаторная вежливость при произносительных затруднениях.' },
+      { id:'s15', name:'Отказываетесь от знакомства на конгрессе', tail:'Редукция социальных контактов при высокой плотности.' },
+      { id:'s16', name:'Краснеете, когда просят «скажи что-нибудь»', tail:'Вазомоторная реакция на публичный запрос речи.' }
+    ]
+  },
+  {
+    cat: 'Tempaj', catRu: 'Временные',
+    items: [
+      { id:'s17', name:'Понедельник', tail:'Недельный циркадный провал в первый рабочий день.' },
+      { id:'s18', name:'Утро до кофе', tail:'Докогнитивная фаза с пониженной речевой готовностью.' },
+      { id:'s19', name:'Ночь после дедлайна', tail:'Постстрессовая дезорганизация сна и мышления.' },
+      { id:'s20', name:'Вечер пятницы', tail:'Предвыходное снижение концентрации и воли.' },
+      { id:'s21', name:'Сезон дождей', tail:'Сезонная аффективная реакция на отсутствие солнца.' },
+      { id:'s22', name:'Конец отпуска', tail:'Реактивный возврат к нагрузке после короткого покоя.' },
+      { id:'s23', name:'Середина января', tail:'Глубокий постпраздничный мотивационный провал.' }
+    ]
+  },
+  {
+    cat: 'Korpaj', catRu: 'Телесные',
+    items: [
+      { id:'s24', name:'Восемь часов за экраном', tail:'Пролонгированная экранная нагрузка без перерыва.' },
+      { id:'s25', name:'Болит спина от стула', tail:'Постуральный дискомфорт при длительном сидении.' },
+      { id:'s26', name:'Глаза устали от монитора', tail:'Зрительное напряжение на фоне постоянного фокуса.' },
+      { id:'s27', name:'Немеет правая рука от мыши', tail:'Компрессионный синдром от однообразного движения.' },
+      { id:'s28', name:'Шея не поворачивается влево', tail:'Ограничение подвижности шейного отдела.' },
+      { id:'s29', name:'Плечи подняты к ушам', tail:'Хронический тонус надплечий на фоне стресса.' },
+      { id:'s30', name:'Дыхание поверхностное', tail:'Редукция глубины дыхания при когнитивной нагрузке.' }
+    ]
+  },
+  {
+    cat: 'Ciferecaj', catRu: 'Цифровые',
+    items: [
+      { id:'s31', name:'47 открытых вкладок', tail:'Цифровая перегрузка с потерей приоритетов.' },
+      { id:'s32', name:'Забыли пароль от клуба', tail:'Эпизодическая мнестическая недостаточность доступа.' },
+      { id:'s33', name:'Потеряли зарядку от наушников', tail:'Хроническая утрата мелких объектов обихода.' },
+      { id:'s34', name:'Телефон разрядился на встрече', tail:'Отказ устройства в ответственный момент.' },
+      { id:'s35', name:'Микрофон не работает на созвоне', tail:'Техническая блокада речевой активности.' },
+      { id:'s36', name:'Уведомления приходят быстрее, чем читаются', tail:'Перегрузка входящего информационного потока.' },
+      { id:'s37', name:'Сорок непрочитанных в чате клуба', tail:'Накопительная коммуникативная задолженность.' }
+    ]
+  },
+  {
+    cat: 'Ekzistencaj', catRu: 'Экзистенциальные',
+    items: [
+      { id:'s38', name:'«Зачем я это учу»', tail:'Периодический смысловой кризис учебной мотивации.' },
+      { id:'s39', name:'«Все говорят лучше меня»', tail:'Сравнительная самооценка на фоне чужого прогресса.' },
+      { id:'s40', name:'«А если не получится»', tail:'Упреждающая тревога о недостижимом результате.' },
+      { id:'s41', name:'«Я начал слишком поздно»', tail:'Возрастная атрибуция учебных затруднений.' },
+      { id:'s42', name:'«А есть ли вообще смысл»', tail:'Развёрнутый экзистенциальный запрос без ответа.' },
+      { id:'s43', name:'«Я никогда не буду как носитель»', tail:'Идеализация носителя как недостижимого эталона.' },
+      { id:'s44', name:'«Может, лучше учить испанский»', tail:'Импульсивная смена языковой траектории.' }
+    ]
+  }
+];
+
+/* ============================================================
+   БАНКИ ДЛЯ ГЕНЕРАЦИИ СИНДРОМА
+   ============================================================ */
+const SYN = {
+  prefixes: ['Хронический','Острый','Рецидивирующий','Латентный','Сезонный','Понедельничный','Компенсированный','Декомпенсированный','Вялотекущий','Обострённый'],
+  adj: {
+    'Lingvaj':     ['аккузативный','дативный','инфинитивный','эсперантский','лексический','фонетический'],
+    'Sociaj':      ['коммуникативный','митинговый','конгрессный','сетевой','разговорный'],
+    'Tempaj':      ['сезонный','понедельничный','утренний','ночной','праздничный'],
+    'Korpaj':      ['постуральный','экранный','офисный','спинальный','мышечный'],
+    'Ciferecaj':   ['цифровой','вкладочный','уведомительный','парольный','экранный'],
+    'Ekzistencaj': ['экзистенциальный','смысловой','мотивационный','путевой','вечерний']
+  },
+  noun: {
+    'Lingvaj':     ['синдром','дисбаланс','паралич','кризис','невроз'],
+    'Sociaj':      ['невроз','ступор','синдром','тревога','блокада'],
+    'Tempaj':      ['кризис','упадок','синдром','апатия','провал'],
+    'Korpaj':      ['синдром','спазм','зажим','дисбаланс','тонус'],
+    'Ciferecaj':   ['синдром','перегрузка','зависимость','хаос','затор'],
+    'Ekzistencaj': ['кризис','тупик','синдром','сомнение','вопрос']
+  },
+  suffix: ['в эсперанто','в дательном падеже','в аккузативе','без винительного','в косвенном','в неопределённом','на третьем уровне','после конгресса'],
+  catCode: { 'Lingvaj':'L', 'Sociaj':'S', 'Tempaj':'T', 'Korpaj':'K', 'Ciferecaj':'C', 'Ekzistencaj':'E' },
+  recs: {
+    'Lingvaj': [
+      'Десять минут чтения вслух ежедневно. Без слушателей, без оценки, без стеснения.',
+      'Раз в неделю — разговорная комната. Обязательно, даже если не хочется.',
+      'Записывайте три новых слова перед сном. Утром они будут на месте.',
+      'Перечитайте манифест клуба вслух. Медленно, с выражением.'
+    ],
+    'Sociaj': [
+      'Напишите одно сообщение в чат клуба. Одно. Этого достаточно для начала.',
+      'Скажите «saluton» первым. Не ждите, пока это сделает кто-то другой.',
+      'Придите на ближайшую встречу. Молча посидеть тоже считается участием.',
+      'Не сравнивайте себя с носителями. Они тоже когда-то путали «kaj» и «aŭ».'
+    ],
+    'Tempaj': [
+      'Поставьте напоминание о перерыве каждые 50 минут. Тело скажет спасибо.',
+      'Один час без экрана перед сном. Это не подвиг, это гигиена.',
+      'Прогулка 20 минут. Можно слушать подкаст на эсперанто, можно молчать.',
+      'В понедельник не начинайте ничего важного. Понедельник — для разгона.'
+    ],
+    'Korpaj': [
+      'Смените стул. Спина оценит это больше, чем любой курс массажа.',
+      'Дыхательная гимнастика. Плечи вниз, вдох на четыре счёта.',
+      'Раз в час — встать и пройтись. Даже до кухни и обратно.',
+      'Проверьте высоту монитора. Он должен быть на уровне глаз, а не колен.'
+    ],
+    'Ciferecaj': [
+      'Закройте все вкладки, кроме трёх. Остальные — потом. Правда, потом.',
+      'Отключите уведомления в чате клуба на два часа. Мир не рухнет.',
+      'Заведите привычку: раз в неделю — цифровой день без телефона. Хотя бы полдня.',
+      'Прочитайте сорок непрочитанных. Начните с самого старого.'
+    ],
+    'Ekzistencaj': [
+      'Позвоните другу по клубу. Просто так, без повода.',
+      'Вспомните, почему вы начали. Скорее всего, причина была хорошая.',
+      'Прочитайте вслух стихотворение на эсперанто. Любое. Это возвращает смысл.',
+      'Не сравнивайте себя с носителями. Сравнивайте с собой год назад.'
+    ]
+  }
+};
+
+/* ============================================================
+   РЕНДЕР ПИКЕРА DIAGNOZO
+   ============================================================ */
+const pickerDiag = document.getElementById('pickerDiag');
+DIAG.forEach(group => {
+  const wrap = document.createElement('div');
+  wrap.className = 'cat-group';
+  wrap.dataset.cat = group.cat;
+
+  const head = document.createElement('div');
+  head.className = 'cat-head';
+  head.innerHTML = `<span class="cat-name">${group.cat}</span><span class="cat-count">${group.items.length}</span>`;
+  wrap.appendChild(head);
+
+  const grid = document.createElement('div');
+  grid.className = 'diag-grid';
+
+  group.items.forEach(it => {
+    const card = document.createElement('div');
+    card.className = 'ind';
+    card.dataset.id = it.id;
+    card.dataset.search = (it.name + ' ' + it.meta + ' ' + group.cat).toLowerCase();
+    card.dataset.level = '';
+    card.innerHTML = `
+      <div class="ind-top">
+        <div class="ind-name">${it.name}</div>
+        <div class="ind-meta">${it.meta}</div>
+      </div>
+      <div class="ind-levels">
+        <button class="lvl" data-lvl="low">↓ Ниже</button>
+        <button class="lvl" data-lvl="norm">✓ Норма</button>
+        <button class="lvl" data-lvl="high">↑ Выше</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  wrap.appendChild(grid);
+  pickerDiag.appendChild(wrap);
+});
+
+/* ============================================================
+   РЕНДЕР ПИКЕРА SIMPTOMOJ
+   ============================================================ */
+const pickerSimp = document.getElementById('pickerSimp');
+SIMP.forEach(group => {
+  const wrap = document.createElement('div');
+  wrap.className = 'cat-group';
+  wrap.dataset.cat = group.cat;
+
+  const head = document.createElement('div');
+  head.className = 'cat-head';
+  head.innerHTML = `<span class="cat-name">${group.catRu}</span><span class="cat-count">${group.items.length}</span>`;
+  wrap.appendChild(head);
+
+  const grid = document.createElement('div');
+  grid.className = 'diag-grid';
+
+  group.items.forEach(it => {
+    const card = document.createElement('label');
+    card.className = 'sim';
+    card.dataset.search = (it.name + ' ' + group.catRu + ' ' + group.cat).toLowerCase();
+    card.innerHTML = `
+      <input type="checkbox" value="${it.id}">
+      <span class="sim-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg>
+      </span>
+      <span class="sim-body">
+        <span class="sim-name">${it.name}</span>
+        <span class="sim-cat">${group.cat}</span>
+      </span>
+    `;
+    grid.appendChild(card);
+  });
+
+  wrap.appendChild(grid);
+  pickerSimp.appendChild(wrap);
+});
+
+/* ============================================================
+   ВЗАИМОДЕЙСТВИЕ: УРОВНИ ИНДИКАТОРОВ
+   ============================================================ */
+pickerDiag.addEventListener('click', (e) => {
+  const lvl = e.target.closest('.lvl');
+  if (!lvl) return;
+  const card = lvl.closest('.ind');
+  const level = lvl.dataset.lvl;
+  const current = card.dataset.level;
+
+  if (current === level) {
+    card.dataset.level = '';
+    card.classList.remove('selected');
+    card.querySelectorAll('.lvl').forEach(b => b.classList.remove('active'));
+  } else {
+    card.dataset.level = level;
+    card.classList.add('selected');
+    card.querySelectorAll('.lvl').forEach(b => b.classList.toggle('active', b === lvl));
+  }
+  updatePanelDiag();
+});
+
+/* ============================================================
+   ВЗАИМОДЕЙСТВИЕ: СИМПТОМЫ
+   ============================================================ */
+pickerSimp.addEventListener('change', (e) => {
+  if (e.target.matches('.sim input')) updatePanelSimp();
+});
+
+/* ============================================================
+   ПОИСК
+   ============================================================ */
+function attachSearch(inputId, selector) {
+  const input = document.getElementById(inputId);
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    document.querySelectorAll(selector + ' .cat-group').forEach(group => {
+      let any = false;
+      group.querySelectorAll('.ind, .sim').forEach(card => {
+        const match = !q || card.dataset.search.includes(q);
+        card.classList.toggle('hidden', !match);
+        if (match) any = true;
+      });
+      group.classList.toggle('hidden', !any);
+    });
+  });
+}
+attachSearch('searchDiag', '#pickerDiag');
+attachSearch('searchSimp', '#pickerSimp');
+
+/* ============================================================
+   СБРОС
+   ============================================================ */
+document.getElementById('clearDiag').addEventListener('click', () => {
+  document.querySelectorAll('#pickerDiag .ind').forEach(c => {
+    c.dataset.level = '';
+    c.classList.remove('selected');
+    c.querySelectorAll('.lvl').forEach(b => b.classList.remove('active'));
+  });
+  updatePanelDiag();
+  document.getElementById('report').classList.remove('on');
+});
+
+document.getElementById('clearSimp').addEventListener('click', () => {
+  document.querySelectorAll('#pickerSimp .sim input').forEach(i => i.checked = false);
+  updatePanelSimp();
+  document.getElementById('report').classList.remove('on');
+});
+
+/* ============================================================
+   СБОР ДАННЫХ
+   ============================================================ */
+function getSelectedDiag() {
+  return [...document.querySelectorAll('#pickerDiag .ind.selected')]
+    .map(card => {
+      const id = card.dataset.id;
+      const level = card.dataset.level;
+      let item = null, cat = null;
+      DIAG.forEach(g => g.items.forEach(it => {
+        if (it.id === id) { item = it; cat = g.cat; }
+      }));
+      return item ? { ...item, cat, level } : null;
+    })
+    .filter(Boolean);
+}
+
+function getSelectedSimp() {
+  return [...document.querySelectorAll('#pickerSimp .sim input:checked')]
+    .map(i => {
+      const id = i.value;
+      let item = null, cat = null, catRu = null;
+      SIMP.forEach(g => g.items.forEach(it => {
+        if (it.id === id) { item = it; cat = g.cat; catRu = g.catRu; }
+      }));
+      return item ? { ...item, cat, catRu } : null;
+    })
+    .filter(Boolean);
+}
+
+/* ============================================================
+   ПАНЕЛЬ DIAGNOZO
+   ============================================================ */
+const countDiag = document.getElementById('countDiag');
+const bodyDiag = document.getElementById('bodyDiag');
+
+function updatePanelDiag() {
+  const sel = getSelectedDiag();
+  countDiag.textContent = sel.length === 1 ? '1 показатель' : sel.length + ' показателей';
+
+  if (!sel.length) {
+    bodyDiag.innerHTML = `<div class="panel-empty">Показатели не отмечены.<br>Выберите хотя бы один<br>для начала разбора.</div>`;
+    return;
+  }
+
+  const outLow  = sel.filter(d => d.level === 'low').length;
+  const outHigh = sel.filter(d => d.level === 'high').length;
+  const inNorm  = sel.filter(d => d.level === 'norm').length;
+  const outTotal = outLow + outHigh;
+
+  const catStats = {};
+  sel.forEach(d => { catStats[d.cat] = (catStats[d.cat] || 0) + 1; });
+  const maxCat = Math.max(...Object.values(catStats));
+
+  const catBars = Object.entries(catStats).map(([c, n]) => `
+    <div class="cat-bar">
+      <div class="cat-bar-top"><span>${c}</span><span>${n}</span></div>
+      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${(n / maxCat) * 100}%"></div></div>
+    </div>
+  `).join('');
+
+  let verdictCls = 'ok', verdictTxt = '';
+  if (outTotal === 0) {
+    verdictCls = 'ok';
+    verdictTxt = 'Все выбранные показатели в норме. Системе нечего добавить, и это редкий случай, когда она молчит с уважением.';
+  } else if (outTotal <= 2) {
+    verdictCls = 'mid';
+    verdictTxt = 'Единичные отклонения. Как правило, это повод повторить анализ через месяц, а не повод для тревоги.';
+  } else {
+    verdictCls = 'bad';
+    verdictTxt = 'Отклонений несколько. Система рекомендует показать результаты врачу — настоящему, а не этому приложению.';
+  }
+
+  bodyDiag.innerHTML = `
+    <div class="mini-stats">
+      <div class="mini-stat">
+        <div class="ms-lbl">В норме</div>
+        <div class="ms-val ok">${inNorm}</div>
+      </div>
+      <div class="mini-stat">
+        <div class="ms-lbl">Ниже нормы</div>
+        <div class="ms-val low">${outLow}</div>
+      </div>
+      <div class="mini-stat">
+        <div class="ms-lbl">Выше нормы</div>
+        <div class="ms-val mid">${outHigh}</div>
+      </div>
+      <div class="mini-stat">
+        <div class="ms-lbl">Категорий</div>
+        <div class="ms-val">${Object.keys(catStats).length}</div>
+      </div>
+    </div>
+
+    <div class="cat-bars">${catBars}</div>
+
+    <div class="verdict ${verdictCls}">
+      <div class="v-lbl">Предварительный вывод</div>
+      <div class="v-txt">${verdictTxt}</div>
+    </div>
+
+    <button class="btn btn-primary" id="buildDiag">
+      Formi konkludon
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </button>
+  `;
+
+  document.getElementById('buildDiag').addEventListener('click', () => buildReportDiag(getSelectedDiag()));
+}
+
+/* ============================================================
+   ПАНЕЛЬ SIMPTOMOJ
+   ============================================================ */
+const countSimp = document.getElementById('countSimp');
+const bodySimp = document.getElementById('bodySimp');
+
+function updatePanelSimp() {
+  const sel = getSelectedSimp();
+  countSimp.textContent = sel.length === 1 ? '1 симптом' : sel.length + ' симптомов';
+
+  if (!sel.length) {
+    bodySimp.innerHTML = `<div class="panel-empty">Симптомы не отмечены.<br>Отметьте хотя бы один,<br>чтобы собрать синдром.</div>`;
+    return;
+  }
+
+  const catStats = {};
+  sel.forEach(s => { catStats[s.catRu] = (catStats[s.catRu] || 0) + 1; });
+  const dominant = Object.entries(catStats).sort((a, b) => b[1] - a[1])[0];
+  const maxCat = dominant[1];
+
+  const catBars = Object.entries(catStats)
+    .sort((a, b) => b[1] - a[1])
+    .map(([c, n]) => `
+      <div class="cat-bar">
+        <div class="cat-bar-top"><span>${c}</span><span>${n}</span></div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${(n / maxCat) * 100}%"></div></div>
+      </div>
+    `).join('');
+
+  const severity = sel.length >= 10 ? 'Тяжёлая' : sel.length >= 6 ? 'Выраженная' : sel.length >= 3 ? 'Умеренная' : 'Лёгкая';
+
+  bodySimp.innerHTML = `
+    <div class="mini-stats">
+      <div class="mini-stat">
+        <div class="ms-lbl">Симптомов</div>
+        <div class="ms-val ok">${sel.length}</div>
+      </div>
+      <div class="mini-stat">
+        <div class="ms-lbl">Категорий</div>
+        <div class="ms-val">${Object.keys(catStats).length}</div>
+      </div>
+      <div class="mini-stat" style="grid-column: span 2;">
+        <div class="ms-lbl">Доминирующая категория</div>
+        <div class="ms-val" style="font-size:1rem;letter-spacing:-0.01em;">${dominant[0]}</div>
+      </div>
+    </div>
+
+    <div class="cat-bars">${catBars}</div>
+
+    <div class="verdict ok">
+      <div class="v-lbl">Тяжесть состояния</div>
+      <div class="v-txt">${severity} форма. Система готова собрать название, код и прогноз.</div>
+    </div>
+
+    <button class="btn btn-primary" id="buildSimp">
+      Starigi sindromon
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </button>
+  `;
+
+  document.getElementById('buildSimp').addEventListener('click', () => buildReportSimp(getSelectedSimp()));
+}
+
+/* ============================================================
+   ГЕНЕРАЦИЯ СИНДРОМА
+   ============================================================ */
+function pick(arr, seed) {
+  return arr[Math.abs(seed) % arr.length];
+}
+
+function generateSyndrome(sel) {
+  const catStats = {};
+  sel.forEach(s => { catStats[s.cat] = (catStats[s.cat] || 0) + 1; });
+  const dominant = Object.entries(catStats).sort((a, b) => b[1] - a[1])[0][0];
+
+  const seedBase = sel.reduce((acc, s) => acc + s.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0), 0);
+
+  const prefix = pick(SYN.prefixes, seedBase);
+  const adj    = pick(SYN.adj[dominant], seedBase * 3);
+  const noun   = pick(SYN.noun[dominant], seedBase * 7);
+  const suffix = pick(SYN.suffix, seedBase * 11);
+
+  const name = `${prefix} ${adj} ${noun} ${suffix}`;
+
+  const codeLetter = SYN.catCode[dominant] || 'X';
+  const codeNum = 10 + (seedBase % 89);
+  const codeSub = 1 + (seedBase % 9);
+  const code = `VA-${codeLetter}${codeNum}.${codeSub}`;
+
+  const severity = sel.length >= 10 ? { ru: 'Тяжёлая', pct: 88 } :
+                   sel.length >= 6  ? { ru: 'Выраженная', pct: 71 } :
+                   sel.length >= 3  ? { ru: 'Умеренная', pct: 52 } :
+                                      { ru: 'Лёгкая', pct: 28 };
+
+  const description = `Зафиксировано ${sel.length} симптом${sel.length === 1 ? '' : sel.length < 5 ? 'а' : 'ов'}. Доминирующая категория — ${SIMP.find(g => g.cat === dominant).catRu.toLowerCase()}. ${sel.slice(0, 3).map(s => s.tail).join(' ')}`;
+
+  const catKeys = Object.keys(catStats);
+  const recsSet = new Set();
+  catKeys.forEach(c => {
+    SYN.recs[c].forEach(r => recsSet.add(r));
+  });
+  const recs = [...recsSet].slice(0, 4);
+
+  const prognosis = 40 + (seedBase % 50);
+
+  return { name, code, severity, description, recs, prognosis, dominant, catStats };
+}
+
+/* ============================================================
+   ОТЧЁТ DIAGNOZO
+   ============================================================ */
+function levelTag(level) {
+  if (level === 'low')  return '<span class="tag low">Ниже нормы</span>';
+  if (level === 'high') return '<span class="tag high">Выше нормы</span>';
+  return '<span class="tag ok">В норме</span>';
+}
+
+function buildReportDiag(sel) {
+  if (!sel.length) return;
+  const section = document.getElementById('report');
+  const body = document.getElementById('reportBody');
+
+  const now = new Date();
+  document.getElementById('reportNo').textContent =
+    'Protokolo № ' + String(now.getFullYear()).slice(2) +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(Math.floor(Math.random() * 9000) + 1000);
+  document.getElementById('reportTitle').textContent = 'Разбор анализов';
+  document.getElementById('reportDate').textContent =
+    now.toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  const listHTML = sel.map(d => `
+    <li>
+      <div>
+        <strong>${d.name}</strong>${levelTag(d.level)}
+        <span class="sub">${d[d.level]}</span>
+      </div>
+    </li>
+  `).join('');
+
+  const inNorm = sel.filter(d => d.level === 'norm').length;
+  const outTotal = sel.length - inNorm;
+  const catStats = {};
+  sel.forEach(d => { catStats[d.cat] = (catStats[d.cat] || 0) + 1; });
+
+  const catSummary = Object.entries(catStats)
+    .map(([c, n]) => `<li><span><strong>${c}</strong> — ${n} показатель${n === 1 ? '' : n < 5 ? 'я' : 'ей'}</span></li>`)
+    .join('');
+
+  let verdict = '';
+  if (outTotal === 0) verdict = 'Все выбранные показатели в норме. Системе нечего добавить, и она делает это молча, с уважением.';
+  else if (outTotal <= 2) verdict = 'Единичные отклонения. Повторите анализ через месяц и покажите результаты врачу, если отклонение сохранится.';
+  else verdict = 'Отклонений несколько. Система настойчиво рекомендует показать результаты врачу — настоящему, с дипломом.';
+
+  const genericAdvice = [
+    'Эти тексты написаны редакцией клуба и не проверялись ни одним специалистом.',
+    'Если что-то беспокоит по-настоящему — идите к врачу, а не перечитывайте этот отчёт.',
+    'Ни один вывод на этой странице не является диагнозом и не может им быть.',
+    'Сохраните отчёт, если он вас развлёк. В медицинской карте ему места нет.'
+  ];
+
+  body.innerHTML = `
+    <div class="report-grid reveal">
+      <div class="rblock wide">
+        <div class="rblock-title"><span class="idx">I</span> Показатели и интерпретации</div>
+        <ul>${listHTML}</ul>
+      </div>
+
+      <div class="rblock">
+        <div class="rblock-title"><span class="idx">II</span> Распределение по категориям</div>
+        <ul>${catSummary}</ul>
+      </div>
+
+      <div class="rblock dark">
+        <div class="rblock-title"><span class="idx">III</span> Сводка</div>
+        <ul>
+          <li><span>Всего показателей: <strong>${sel.length}</strong></span></li>
+          <li><span>В норме: <strong>${inNorm}</strong></span></li>
+          <li><span>Вне нормы: <strong>${outTotal}</strong></span></li>
+          <li><span>${verdict}</span></li>
+        </ul>
+      </div>
+
+      <div class="rblock accent wide">
+        <div class="rblock-title"><span class="idx">IV</span> Примечания редакции</div>
+        <ul>
+          ${genericAdvice.map(a => `<li><span>${a}</span></li>`).join('')}
+        </ul>
+      </div>
+    </div>
+
+    <div class="report-foot reveal">
+      <p class="rf-note">
+        Отчёт сформирован автоматически и носит исключительно развлекательный характер. Он не является медицинским документом, не имеет юридической силы и не может быть предъявлен ни одному учреждению.
+      </p>
+      <button class="btn btn-outline" onclick="window.print()">
+        Presi
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+  `;
+
+  section.classList.add('on');
+  setTimeout(() => section.querySelectorAll('.reveal').forEach(el => el.classList.add('visible')), 50);
+  setTimeout(() => {
+    const top = section.getBoundingClientRect().top + window.pageYOffset - 70;
+    window.scrollTo({ top, behavior: 'smooth' });
+  }, 120);
+}
+
+/* ============================================================
+   ОТЧЁТ SIMPTOMOJ
+   ============================================================ */
+function buildReportSimp(sel) {
+  if (!sel.length) return;
+  const section = document.getElementById('report');
+  const body = document.getElementById('reportBody');
+
+  const syn = generateSyndrome(sel);
+
+  const now = new Date();
+  document.getElementById('reportNo').textContent =
+    'Protokolo № ' + String(now.getFullYear()).slice(2) +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(Math.floor(Math.random() * 9000) + 1000);
+  document.getElementById('reportTitle').textContent = 'Постановка синдрома';
+  document.getElementById('reportDate').textContent =
+    now.toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  const symptomsHTML = sel.map(s => `
+    <li>
+      <div>
+        <strong>${s.name}</strong>
+        <span class="sub">${s.tail}</span>
+      </div>
+    </li>
+  `).join('');
+
+  const recsHTML = syn.recs.map(r => `<li><span>${r}</span></li>`).join('');
+
+  const catBarsHTML = Object.entries(syn.catStats)
+    .sort((a, b) => b[1] - a[1])
+    .map(([c, n]) => {
+      const ru = SIMP.find(g => g.cat === c).catRu;
+      return `
+        <div class="prog-row">
+          <div class="prog-top"><span>${ru}</span><b>${n}</b></div>
+          <div class="prog-track"><div class="prog-fill" style="width:${(n / sel.length) * 100}%"></div></div>
+        </div>
+      `;
+    }).join('');
+
+  const progClass = syn.prognosis >= 70 ? 'green' : syn.prognosis >= 45 ? 'amber' : 'red';
+
+  body.innerHTML = `
+    <div class="report-grid reveal">
+      <div class="syndrome-hero">
+        <div class="syn-eyebrow">Diagnozo starigita</div>
+        <div class="syn-name">${syn.name}</div>
+        <div class="syn-meta">
+          <div class="syn-meta-item">
+            <span class="sm-lbl">Код</span>
+            <span class="sm-val violet">${syn.code}</span>
+          </div>
+          <div class="syn-meta-item">
+            <span class="sm-lbl">Тяжесть</span>
+            <span class="sm-val">${syn.severity.ru}</span>
+          </div>
+          <div class="syn-meta-item">
+            <span class="sm-lbl">Симптомов</span>
+            <span class="sm-val">${sel.length}</span>
+          </div>
+          <div class="syn-meta-item">
+            <span class="sm-lbl">Доминанта</span>
+            <span class="sm-val">${SIMP.find(g => g.cat === syn.dominant).catRu}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="rblock">
+        <div class="rblock-title"><span class="idx">I</span> Зафиксированные симптомы</div>
+        <ul>${symptomsHTML}</ul>
+      </div>
+
+      <div class="rblock dark">
+        <div class="rblock-title"><span class="idx">II</span> Клиническая картина</div>
+        <ul>
+          <li><span>${syn.description}</span></li>
+        </ul>
+
+        <div class="prog-block">
+          <div class="prog-row">
+            <div class="prog-top"><span>Общий индекс тяжести</span><b>${syn.severity.pct}%</b></div>
+            <div class="prog-track"><div class="prog-fill ${syn.severity.pct >= 70 ? 'red' : syn.severity.pct >= 45 ? 'amber' : 'green'}" style="width:${syn.severity.pct}%"></div></div>
+          </div>
+          <div class="prog-row">
+            <div class="prog-top"><span>Прогноз восстановления</span><b>${syn.prognosis}%</b></div>
+            <div class="prog-track"><div class="prog-fill ${progClass}" style="width:${syn.prognosis}%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rblock wide">
+        <div class="rblock-title"><span class="idx">III</span> Распределение по категориям</div>
+        <div class="prog-block">${catBarsHTML}</div>
+      </div>
+
+      <div class="rblock accent-violet wide">
+        <div class="rblock-title"><span class="idx">IV</span> Рекомендации редакции</div>
+        <ul>${recsHTML}</ul>
+      </div>
+    </div>
+
+    <div class="report-foot reveal">
+      <p class="rf-note">
+        Синдром сгенерирован алгоритмом и не существует ни в одной медицинской классификации. Совпадение названия, кода или описания с реальным диагнозом — случайность.
+      </p>
+      <button class="btn btn-outline" onclick="window.print()">
+        Presi
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+  `;
+
+  section.classList.add('on');
+  setTimeout(() => section.querySelectorAll('.reveal').forEach(el => el.classList.add('visible')), 50);
+  setTimeout(() => {
+    const top = section.getBoundingClientRect().top + window.pageYOffset - 70;
+    window.scrollTo({ top, behavior: 'smooth' });
+  }, 120);
+}
+
+/* ============================================================
+   ПЕРЕКЛЮЧЕНИЕ РЕЖИМОВ
+   ============================================================ */
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const mode = btn.dataset.mode;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.mode-panel').forEach(p => p.classList.toggle('active', p.id === 'mode-' + mode));
+    document.getElementById('report').classList.remove('on');
+  });
+});
+
+/* ============================================================
+   ИНИЦИАЛИЗАЦИЯ
+   ============================================================ */
+updatePanelDiag();
+updatePanelSimp();
+
+/* ============================================================
+   SPLASH
+   ============================================================ */
+window.addEventListener('load', () => {
+  setTimeout(() => document.getElementById('splash').classList.add('hide'), 1300);
+});
+
+/* ============================================================
+   PROGRESS
+   ============================================================ */
+const progressBar = document.getElementById('progressBar');
+window.addEventListener('scroll', () => {
+  const h = document.documentElement.scrollHeight - window.innerHeight;
+  progressBar.style.width = (h > 0 ? (window.scrollY / h) * 100 : 0) + '%';
+});
+
+/* ============================================================
+   REVEAL
+   ============================================================ */
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
+  });
+}, { threshold: 0.08, rootMargin: '0px 0px -60px 0px' });
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+/* ============================================================
+   FAQ
+   ============================================================ */
+document.querySelectorAll('.faq-q').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const item = btn.parentElement;
+    const wasOpen = item.classList.contains('open');
+    document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+    if (!wasOpen) item.classList.add('open');
+    btn.setAttribute('aria-expanded', String(!wasOpen));
+  });
+});
+
+/* ============================================================
+   MOBILE MENU
+   ============================================================ */
+const burger = document.getElementById('burger');
+const mobileMenu = document.getElementById('mobileMenu');
+const mobileClose = document.getElementById('mobileClose');
+burger.addEventListener('click', () => mobileMenu.classList.add('open'));
+mobileClose.addEventListener('click', () => mobileMenu.classList.remove('open'));
+mobileMenu.querySelectorAll('a').forEach(a => {
+  a.addEventListener('click', () => mobileMenu.classList.remove('open'));
+});
+
+/* ============================================================
+   SMOOTH ANCHORS
+   ============================================================ */
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', (e) => {
+    const id = a.getAttribute('href');
+    if (id === '#') return;
+    const target = document.querySelector(id);
+    if (target) {
+      e.preventDefault();
+      const top = target.getBoundingClientRect().top + window.pageYOffset - 70;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
+  });
+});
+
+/* ============================================================
+   ТОСТ
+   ============================================================ */
+const toast = document.getElementById('toast');
+let toastTimer = null;
+function showToast(html, ms = 3200) {
+  toast.innerHTML = html;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), ms);
+}
+
+/* ============================================================
+   ПАСХАЛКА 1: котики в футере
+   ============================================================ */
+(function () {
+  const EMOJIS = ['🐱','🐈','🐈‍⬛','🐾','😺','😸','😻','🐾','🐾','🐈','🐱','🐾'];
+  const btn = document.getElementById('eggCats');
+  let active = false;
+
+  btn.addEventListener('click', () => {
+    if (active) return;
+    active = true;
+    for (let i = 0; i < 70; i++) {
+      const el = document.createElement('span');
+      el.className = 'falling';
+      el.textContent = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+      el.style.left = (Math.random() * 100) + 'vw';
+      el.style.fontSize = (13 + Math.random() * 26) + 'px';
+      el.style.animationDuration = (2.4 + Math.random() * 2.6) + 's';
+      el.style.animationDelay = (Math.random() * 1.4) + 's';
+      el.style.setProperty('--rot', (Math.random() * 720 - 360) + 'deg');
+      el.style.opacity = (0.55 + Math.random() * 0.45).toFixed(2);
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 6500);
+    }
+    showToast('<em>✦</em> Vi trovis la unuan · 1/4');
+    setTimeout(() => { active = false; }, 6000);
+  });
+})();
+
+/* ============================================================
+   ПАСХАЛКА 2: набор «saluton»
+   ============================================================ */
+(function () {
+  const WORDS = ['saluton','dankon','bonan','kaj','jes','nu','ami','koro','lingvo','klubo','espero','verda','stelo','amiko','paco','nova','bele','vere'];
+  let buffer = '';
+  let fired = false;
+
+  document.addEventListener('keydown', (e) => {
+    if (e.target.matches('input, textarea, select')) return;
+    if (e.key.length !== 1) return;
+    buffer = (buffer + e.key.toLowerCase()).slice(-10);
+
+    if (buffer.includes('saluton') && !fired) {
+      fired = true;
+      for (let i = 0; i < 60; i++) {
+        const el = document.createElement('span');
+        el.className = 'falling';
+        el.textContent = WORDS[Math.floor(Math.random() * WORDS.length)];
+        el.style.left = (Math.random() * 100) + 'vw';
+        el.style.fontFamily = "'JetBrains Mono', monospace";
+        el.style.fontSize = (10 + Math.random() * 14) + 'px';
+        el.style.color = Math.random() > 0.5 ? '#009900' : '#0a0a0a';
+        el.style.fontWeight = '600';
+        el.style.letterSpacing = '0.08em';
+        el.style.animationDuration = (3 + Math.random() * 3) + 's';
+        el.style.animationDelay = (Math.random() * 1.6) + 's';
+        el.style.setProperty('--rot', (Math.random() * 200 - 100) + 'deg');
+        el.style.opacity = (0.4 + Math.random() * 0.5).toFixed(2);
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 7000);
+      }
+      showToast('<em>✦</em> Saluton, amiko · 2/4');
+      setTimeout(() => { fired = false; }, 9000);
+    }
+  });
+})();
+
+/* ============================================================
+   ПАСХАЛКА 3: пять кликов по логотипу
+   ============================================================ */
+(function () {
+  const brand = document.getElementById('navBrand');
+  let clicks = 0, timer = null, unlocked = false;
+
+  brand.addEventListener('click', (e) => {
+    e.preventDefault();
+    clicks++;
+    clearTimeout(timer);
+    timer = setTimeout(() => { clicks = 0; }, 1200);
+
+    if (clicks >= 5) {
+      clicks = 0;
+      document.body.classList.add('stars-fast');
+      setTimeout(() => document.body.classList.remove('stars-fast'), 3000);
+
+      for (let i = 0; i < 24; i++) {
+        const el = document.createElement('span');
+        el.className = 'falling';
+        el.textContent = '✦';
+        el.style.left = (Math.random() * 100) + 'vw';
+        el.style.fontSize = (14 + Math.random() * 22) + 'px';
+        el.style.color = '#009900';
+        el.style.animationDuration = (2 + Math.random() * 2) + 's';
+        el.style.animationDelay = (Math.random() * 0.8) + 's';
+        el.style.setProperty('--rot', (Math.random() * 1080 - 540) + 'deg');
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 5000);
+      }
+
+      if (!unlocked) {
+        unlocked = true;
+        showToast('<em>✦</em> La steloj turniĝas · 3/4');
+      } else {
+        showToast('<em>✦</em> Kaj denove');
+      }
+    }
+  });
+})();
+
+/* ============================================================
+   ПАСХАЛКА 4: клик по большой звезде в футере
+   ============================================================ */
+(function () {
+  const star = document.getElementById('giantStar');
+  let clicks = 0;
+
+  star.style.cursor = 'pointer';
+  star.addEventListener('click', () => {
+    star.classList.add('spin');
+    setTimeout(() => star.classList.remove('spin'), 900);
+    clicks++;
+
+    if (clicks === 3) {
+      showToast('<em>✦</em> Vi trovis ĝin · 4/4 · dankon pro la pacienco');
+    }
+  });
+})();
+
+/* ============================================================
+   ПАСХАЛКА 5: тройной клик по номеру секции
+   ============================================================ */
+(function () {
+  const ALT = ['∞','✦','00','π','42','?','!','§'];
+  document.querySelectorAll('.section-label .num').forEach(num => {
+    let timer = null;
+    num.addEventListener('click', () => {
+      clearTimeout(timer);
+      const original = num.dataset.num;
+      num.textContent = ALT[Math.floor(Math.random() * ALT.length)];
+      timer = setTimeout(() => { num.textContent = original; }, 900);
+    });
+  });
+})();
+
+</script>
+
+</body>
+</html>
